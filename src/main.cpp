@@ -16,8 +16,6 @@ int main(int argc, char** argv)
   vector<string> infiles;
   float max_distance = 5.;
 
-  // Wrap everything in a try block.  Do this every time, 
-  // because exceptions will be thrown for problems. 
   try {
   CmdLine cmd(
       "Aligns multiple scan maps and combines into a single image. "

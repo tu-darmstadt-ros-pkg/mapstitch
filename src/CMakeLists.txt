@@ -3,9 +3,10 @@ SET(SRCS
         mapstitch.cpp
 )
 
-#QT4_WRAP_CPP(MergingDialog_MOC_SRCS ${MergingDialog_MOC_HDRS})
-#ADD_EXECUTABLE(mergingdialog ${MergingDialog_SRCS} ${MergingDialog_MOC_SRCS})
-#TARGET_LINK_LIBRARIES(mergingdialog ${QT_LIBRARIES} ${OpenCV_LIBS})
+SET(ROS_COMPONENT
+        rosmain.cpp
+        mapstitch.cpp
+)
 
-#TARGET_LINK_LIBRARIES(mergingdialog ${QT_LIBRARIES} ${OpenCV_LIBS})
 rosbuild_add_executable(mapstitch ${SRCS})
+rosbuild_add_executable(ros_mapstitch ${ROS_COMPONENT})

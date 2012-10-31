@@ -32,7 +32,8 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
       Point2f a2 = kpv1[matches[j].queryIdx].pt,
               b2 = kpv2[matches[j].trainIdx].pt;
 
-      if ( fabs(norm(a1-a2) - norm(b1-b2)) > max_pairwise_distance)
+      if ( fabs(norm(a1-a2) - norm(b1-b2)) > max_pairwise_distance ||
+           fabs(norm(a1-a2) - norm(b1-b2)) == 0)
         continue;
 
       coord1.push_back(a1);
@@ -41,6 +42,9 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
       coord2.push_back(b2);
     }
   }
+
+  if (coord1.size() == 0)
+    throw Exception();
 
   // 5. find homography
   H = estimateRigidTransform(coord2, coord1, false);
