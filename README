@@ -1,0 +1,25 @@
+MapStich - merge multiple 2D maps
+---------------------------------
+
+ This is a ROS component and a command line tool to align a map to a previously
+saved 2D map. The previously saved map is assumed to have been created by the
+map_saver ROS component. The implementation is based on opencvs
+estimateRigidTransform function, ORB feature extraction and matching the
+distance of pairwise feature candidates.
+
+ The ROS component can be run with "rosrun mapstitch ros_mapstitch" and supports
+three parameters:
+ * world_map, the filename of the previously saved map
+ * max_distance, the treshold distance for filtering pairwise distances. Too
+   high does not filter any features and too low filter too much. This is the
+   pixel distance between matches in both maps, so should be set depending on
+   the resolution of your maps.
+ * debug, set to true will save the current_stitch.pgm and current_map.pgm, i.e.
+   the stitchted maps and the current map as seen on /map.
+
+ The command line tool can be run with
+
+
+TODO
+----
+ * check that world file and /map have the same resolution

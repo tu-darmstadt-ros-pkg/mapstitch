@@ -1,7 +1,16 @@
 <package>
   <description brief="mapstitch">
 
-     mapstitch
+    A ROS Component and command line tool to align the current 2D /map or an
+    image of a map to a previously saved map. The map to align to is assumed to
+    be a .pgm created by the map_saver component (but other may work too). There
+    are no additional sanity checks like matching resolution of the supplied
+    maps.
+
+    he neccesary transformation (with
+    3 DOF, rotation and translation) is either published as tf between the
+    /world and /map frame, returned on the command line or saved as a stitched
+    image.
 
   </description>
   <author></author>
