@@ -17,7 +17,42 @@ three parameters:
  * debug, set to true will save the current_stitch.pgm and current_map.pgm, i.e.
    the stitchted maps and the current map as seen on /map.
 
- The command line tool can be run with
+ The command line tool can be run with bin/mapstitch and can be used to align
+two previosuly saved .pgm maps on each other. The Usage is
+
+bin/mapstitch  [-o <string>] [-v] [-d <max-distance>] [--] [--version]
+                  [-h] <file1 and file2> ...
+
+
+Where:
+
+   -o <string>,  --outfile <string>
+     output filename
+
+   -v,  --verbose
+     verbose output
+
+   -d <max-distance>,  --maximum-distance <max-distance>
+     maximum distance on matched points pairs for inclusion
+
+   --,  --ignore_rest
+     Ignores the rest of the labeled arguments following this flag.
+
+   --version
+     Displays version information and exits.
+
+   -h,  --help
+     Displays usage information and exits.
+
+   <file1 and file2>  (accepted multiple times)
+     input file names (first one is pivot element)
+
+
+   Aligns multiple scan maps and combines into a single image. All images
+   given on the command line will be aligned to the first supplied image
+   and their respective rotation/translation and transformation matrix will
+   be returned.
+
 
 
 TODO
