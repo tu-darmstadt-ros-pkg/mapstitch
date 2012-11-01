@@ -13,6 +13,7 @@ double max_distance = 5.;
 bool debug = false;
 Mat world_map;
 float world_resolution = 0.;
+String map_frame = "map";
 
 void mapCallback(const nav_msgs::OccupancyGridConstPtr& map)
 {
@@ -71,7 +72,7 @@ void mapCallback(const nav_msgs::OccupancyGridConstPtr& map)
   tf::Transform transform;
   transform.setOrigin( Vector3(c.transx*resolution,c.transy*resolution, 0.) );
   transform.setRotation( Quaternion(Vector3(0,0,1), c.rotation*M_PI/180.) );
-  br.sendTransform(StampedTransform(transform, Time::now(), "world", "map"));
+  br.sendTransform(StampedTransform(transform, Time::now(), "world", map_frame));
 }
 
 int main(int argc, char **argv)
@@ -84,6 +85,7 @@ int main(int argc, char **argv)
   // load the parameters
   param.getParam("max_distance", max_distance);
   param.getParam("debug", debug);
+  param.getParam("map_frame", map_frame);
 
   // load the world map
   if (!param.getParam("world_map",world_map_file)) {

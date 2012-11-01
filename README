@@ -14,6 +14,7 @@ three parameters:
    high does not filter any features and too low filter too much. This is the
    pixel distance between matches in both maps, so should be set depending on
    the resolution of your maps.
+ * map_frame, the frame id on which the tf will be published (default is /map).
  * debug, set to true will save the current_stitch.pgm and current_map.pgm, i.e.
    the stitchted maps and the current map as seen on /map.
 
