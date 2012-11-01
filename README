@@ -1,5 +1,5 @@
 MapStich - merge multiple 2D maps
----------------------------------
+=================================
 
  This is a ROS component and a command line tool to align a map to a previously
 saved 2D map. The previously saved map is assumed to have been created by the
