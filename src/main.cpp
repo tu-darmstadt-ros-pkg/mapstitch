@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <opencv/highgui.h>
 #include "tclap/CmdLine.h"
-#include "mapstitch.h"
+#include "mapstitch/mapstitch.h"
 
 using namespace TCLAP;
 using namespace std;

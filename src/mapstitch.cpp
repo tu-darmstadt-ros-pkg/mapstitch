@@ -1,4 +1,4 @@
-#include "mapstitch.h"
+#include "mapstitch/mapstitch.h"
 #include "math.h"
 
 StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)

@@ -1,7 +1,7 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "nav_msgs/OccupancyGrid.h"
-#include "mapstitch.h"
+#include "mapstitch/mapstitch.h"
 #include <tf/transform_broadcaster.h>
 #include <opencv/highgui.h>
 
