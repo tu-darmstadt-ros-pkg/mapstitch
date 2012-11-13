@@ -7,9 +7,11 @@ map_saver ROS component. The implementation is based on opencvs
 estimateRigidTransform function, ORB feature extraction and matching the
 distance of pairwise feature candidates.
 
+ROS component
+=============
+
  The ROS component can be run with "rosrun mapstitch ros_mapstitch" and supports
 three parameters:
- * world_map, the filename of the previously saved map
  * max_distance, the treshold distance for filtering pairwise distances. Too
    high does not filter any features and too low filter too much. This is the
    pixel distance between matches in both maps, so should be set depending on
@@ -17,8 +19,17 @@ three parameters:
  * debug, set to true will save the current_stitch.pgm and current_map.pgm, i.e.
    the stitchted maps and the current map as seen on /map.
 
+ The component will listen on the /world topic for the OccupancyGrid-Map to
+align the /map topic one to. At the moment no scaling is implemented, so the
+maps need to have the same resolution. The transformation from /map to /world
+will be published on the frame_ids given in the /map and /world topics.
+
+Command Line Tool
+=================
+
  The command line tool can be run with bin/mapstitch and can be used to align
-two previosuly saved .pgm maps on each other. The Usage is
+two previosuly saved .pgm maps on each other. It is mainly meant for testing and
+debugging. The Usage is
 
 bin/mapstitch  [-o <string>] [-v] [-d <max-distance>] [--] [--version]
                   [-h] <file1 and file2> ...

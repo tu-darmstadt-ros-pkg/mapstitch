@@ -25,26 +25,36 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
 
   // 4. find matching point pairs with same distance in both images
   for (size_t i=0; i<matches.size(); i++) {
-    Point2f a1 = kpv1[matches[i].queryIdx].pt,
-            b1 = kpv2[matches[i].trainIdx].pt;
+    KeyPoint a1 = kpv1[matches[i].queryIdx],
+             b1 = kpv2[matches[i].trainIdx];
+
+    if (matches[i].distance > 30)
+      continue;
 
     for (size_t j=0; j<matches.size(); j++) {
-      Point2f a2 = kpv1[matches[j].queryIdx].pt,
-              b2 = kpv2[matches[j].trainIdx].pt;
+      KeyPoint a2 = kpv1[matches[j].queryIdx],
+               b2 = kpv2[matches[j].trainIdx];
 
-      if ( fabs(norm(a1-a2) - norm(b1-b2)) > max_pairwise_distance ||
-           fabs(norm(a1-a2) - norm(b1-b2)) == 0)
+      if (matches[j].distance > 30)
         continue;
 
-      coord1.push_back(a1);
-      coord1.push_back(a2);
-      coord2.push_back(b1);
-      coord2.push_back(b2);
+      if ( fabs(norm(a1.pt-a2.pt) - norm(b1.pt-b2.pt)) > max_pairwise_distance ||
+           fabs(norm(a1.pt-a2.pt) - norm(b1.pt-b2.pt)) == 0)
+        continue;
+
+      coord1.push_back(a1.pt);
+      coord1.push_back(a2.pt);
+      coord2.push_back(b1.pt);
+      coord2.push_back(b2.pt);
+
+      fil1.push_back(a1);
+      fil1.push_back(a2);
+      fil2.push_back(b1);
+      fil2.push_back(b2);
     }
   }
 
-  if (coord1.size() == 0)
-    throw Exception();
+  if (coord1.size() == 0) throw Exception();
 
   // 5. find homography
   H = estimateRigidTransform(coord2, coord1, false);
@@ -63,37 +73,13 @@ StitchedMap::get_debug()
   Mat out;
   drawKeypoints(image1, kpv1, image1, Scalar(255,0,0));
   drawKeypoints(image2, kpv2, image2, Scalar(255,0,0));
-  drawMatches(image1,kpv1, image2,kpv2, matches,out,Scalar::all(-1),Scalar::all(-1));
+  drawMatches(image1,fil1, image2,fil2, matches,out,Scalar::all(-1),Scalar::all(-1));
   return out;
 }
 
 Mat // return the stitched maps
 StitchedMap::get_stitch()
 {
-  // calculate borders of transformed image2
-  //int w = image2.size().width,
-  //    h = image2.size().height;
-
-  //Mat x[] = { H*(Mat_<double>(3,1) << 0,0,1),
-  //            H*(Mat_<double>(3,1) << w,0,1),
-  //            H*(Mat_<double>(3,1) << 0,h,1),
-  //            H*(Mat_<double>(3,1) << w,h,1) };
-
-  //double minx=x[0].at<double>(0,0),maxx=x[0].at<double>(0,0),
-  //       miny=x[0].at<double>(1,0),maxy=x[0].at<double>(1,0);
-
-  //for (size_t i=0; i<sizeof(x)/sizeof(*x); i++) {
-  //  minx = min(minx, x[i].at<double>(0,0));
-  //  maxx = max(maxx, x[i].at<double>(0,0));
-  //  miny = min(miny, x[i].at<double>(1,0));
-  //  maxy = max(maxy, x[i].at<double>(1,0));
-  //}
-
-  //Size s(fabs(minx)+fabs(maxx),
-  //       fabs(miny)+fabs(maxy));
-
-  //cout << s.width << " " << s.height << endl;
-
   // create storage for new image and get transformations
   Mat image(image2.size(), image2.type());
   warpAffine(image2,image,H,image.size());

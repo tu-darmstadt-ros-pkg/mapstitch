@@ -22,7 +22,8 @@ public:
       dscv1, dscv2;
 
   vector<KeyPoint> kpv1,kpv2;
-  vector<Point2f>  coord1, coord2;
+  vector<KeyPoint> fil1,fil2;
+  vector<Point2f>  coord1,coord2;
   vector<DMatch>   matches;
 
   double rotation,transx,transy,scalex,scaley;
