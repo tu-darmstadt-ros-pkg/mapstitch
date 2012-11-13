@@ -54,7 +54,8 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
     }
   }
 
-  if (coord1.size() == 0) throw Exception();
+  if (coord1.size() == 0)
+    ;
 
   // 5. find homography
   H = estimateRigidTransform(coord2, coord1, false);

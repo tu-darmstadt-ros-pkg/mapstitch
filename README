@@ -24,6 +24,16 @@ align the /map topic one to. At the moment no scaling is implemented, so the
 maps need to have the same resolution. The transformation from /map to /world
 will be published on the frame_ids given in the /map and /world topics.
 
+ The node now listen to three topics:
+  /map    - publish the /map->/world (frame_ids) transform on update
+  /world  - receive the world map on this latched topic
+  /align  - receive the map used for alignment
+
+ We have three topics to be able to publish two "complete" maps on /align and 
+/world and calculate a "static" transform and then publish this transform 
+whenever something on /map keeps published (this is needed so the transform 
+does not timeout).
+
 Command Line Tool
 =================
 
