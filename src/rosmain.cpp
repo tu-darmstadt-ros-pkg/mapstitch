@@ -4,6 +4,7 @@
 #include "mapstitch/mapstitch.h"
 #include <tf/transform_broadcaster.h>
 #include <opencv/highgui.h>
+#include <unistd.h>
 
 using namespace cv;
 using namespace tf;
@@ -112,9 +113,9 @@ void update_tf(struct stitch_maps *w, struct stitch_maps *m)
   H.at<double>(0,2) *= res;
   H = E*H*E_;
 
-  double rot = atan2(H.at<double>(0,1),H.at<double>(1,1)),
-      transx = -1 * H.at<double>(0,2),
-      transy = -1 * H.at<double>(1,2);
+  double rot = -1 *atan2(H.at<double>(0,1),H.at<double>(1,1)),
+      transx = H.at<double>(0,2),
+      transy = H.at<double>(1,2);
 
   ROS_INFO("stichted map with rotation %.5f radians and (%f,%f) translation",
       rot,transx,transy);
@@ -124,7 +125,7 @@ void update_tf(struct stitch_maps *w, struct stitch_maps *m)
   tf_valid = true;
 
   if (m->frame_id  == w->frame_id)
-    ROS_WARN("frame_id for world and map are equale, this will probably not work"
+    ROS_WARN("frame_id for world and map are the same, this will probably not work"
              "If map_server publishes your maps you might want to use _frame_id:=/world");
 }
 
@@ -146,7 +147,7 @@ void update_stitch(struct stitch_maps *old_map,
 void worldCallback(const nav_msgs::OccupancyGrid& new_world)
 {
   update_stitch(&old_world, new_world);
-  update_tf(&old_map, &old_world);
+  update_tf(&old_world, &old_map);
   publish_stitch();
 }
 
@@ -158,7 +159,7 @@ void mapCallback(const nav_msgs::OccupancyGrid& new_map)
 void alignCallback(const nav_msgs::OccupancyGrid& new_map)
 {
   update_stitch(&old_map, new_map);
-  update_tf(&old_map, &old_world);
+  update_tf(&old_world, &old_map);
   publish_stitch();
 }
 
