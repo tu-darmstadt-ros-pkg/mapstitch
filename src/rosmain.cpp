@@ -5,12 +5,14 @@
 #include <tf/transform_broadcaster.h>
 #include <opencv/highgui.h>
 #include <unistd.h>
+#include <string>
 
 using namespace cv;
 using namespace tf;
 using namespace ros;
 using namespace nav_msgs;
 
+std::string save_stitch("");
 double max_distance = 5.;
 bool   debug = false;
 
@@ -93,6 +95,10 @@ void update_tf(struct stitch_maps *w, struct stitch_maps *m)
     imwrite("current_stitch.pgm", c.get_stitch());
   }
 
+  if (save_stitch.size() > 0) {
+    imwrite(save_stitch.c_str(), c.get_stitch());
+  }
+
   // publish this as the transformation between /world -> /map
   // The point-of-reference for opencv is the edge of the image, for ROS
   // this is the centerpoint of the image, which is why we translate each
@@ -170,6 +176,7 @@ int main(int argc, char **argv)
   ros::NodeHandle param("~");
 
   // load the parameters
+  param.getParam("save_stitch", save_stitch);
   param.getParam("max_distance", max_distance);
   param.getParam("debug", debug);
 
