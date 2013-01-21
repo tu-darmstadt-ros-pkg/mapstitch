@@ -59,7 +59,7 @@ void publish_stitch()
 
   if (tf_valid)
     br.sendTransform(
-      StampedTransform(ourtf,Time::now(), old_world.frame_id, old_map.frame_id));
+      StampedTransform(ourtf,Time::now()+Duration(3.), old_world.frame_id, old_map.frame_id));
 }
 
 void update_tf(struct stitch_maps *w, struct stitch_maps *m)
