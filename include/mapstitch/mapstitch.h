@@ -26,7 +26,7 @@ public:
   vector<Point2f>  coord1,coord2;
   vector<DMatch>   matches;
 
-  double rotation,transx,transy,scalex,scaley;
+  double rot_deg,rot_rad,transx,transy,scalex,scaley;
 };
 
 #endif // MAPSTITCH_H

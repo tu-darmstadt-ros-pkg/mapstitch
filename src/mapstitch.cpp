@@ -85,8 +85,9 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   H = estimateRigidTransform(coord2, coord1, false);
 
   // 6. calculate this stuff for information
-  rotation = 180./M_PI*atan2(H.at<double>(0,1),H.at<double>(1,1)),
-  transx   = H.at<double>(0,2),
+  rot_rad  = atan2(H.at<double>(0,1),H.at<double>(1,1));
+  rot_deg  = 180./M_PI* rot_rad;
+  transx   = H.at<double>(0,2);
   transy   = H.at<double>(1,2);
   scalex   = sqrt(pow(H.at<double>(0,0),2)+pow(H.at<double>(0,1),2));
   scaley   = sqrt(pow(H.at<double>(1,0),2)+pow(H.at<double>(1,1),2));
