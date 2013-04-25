@@ -106,13 +106,45 @@ Mat // return the stitched maps
 StitchedMap::get_stitch()
 {
   // create storage for new image and get transformations
-  Mat image(image2.size(), image2.type());
-  warpAffine(image2,image,H,image.size());
+  Mat warped_image(image2.size(), image2.type());
+  warpAffine(image2,warped_image,H,warped_image.size(),INTER_NEAREST,BORDER_CONSTANT,205);
+
+  Mat merged_image(min(image1.rows,warped_image.rows),min(image1.cols,warped_image.cols),warped_image.type());
+
+  for(size_t i = 0; i < merged_image.size().area(); ++i)
+  {
+      // if cell is free in both maps
+      if(image1.data[i] > 230 && warped_image.data[i] > 230)
+      {
+          merged_image.data[i] = 254;
+      }
+      // if cell is occupied in either map
+      else if(image1.data[i] < 10 || warped_image.data[i] < 10)
+      {
+          merged_image.data[i] = 0;
+      }
+      // if cell is unknown in one and known in the other map
+      else if(image1.data[i] > 200 && image1.data[i] < 210
+              && (warped_image.data[i] < 200 || warped_image.data[i] > 210))
+      {
+          merged_image.data[i] = warped_image.data[i];
+      }
+      else if(warped_image.data[i] > 200 && warped_image.data[i] < 210
+              && (image1.data[i] < 200 || image1.data[i] > 210))
+      {
+          merged_image.data[i] = image1.data[i];
+      }
+      // else the cell is unknown
+      else
+      {
+          merged_image.data[i] = 205;
+      }
+  }
 
   // blend image1 onto the transformed image2
-  addWeighted(image,.5,image1,.5,0.0,image);
+  //addWeighted(warped_image,.5,image1,.5,0.0,warped_image);
 
-  return image;
+  return merged_image;
 }
 
 StitchedMap::~StitchedMap() { }
