@@ -20,6 +20,7 @@ public:
   Mat H; // transformation matrix
   Mat image1, image2,
       dscv1, dscv2;
+  bool is_valid;
 
   vector<KeyPoint> kpv1,kpv2;
   vector<KeyPoint> fil1,fil2;

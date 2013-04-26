@@ -78,19 +78,30 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
     }
   }
 
-  if (coord1.size() == 0)
-    ;
+  if (coord1.empty() || coord2.empty())
+  {
+    is_valid = false;
+  }
+  else
+  {
+      // 5. find homography
+      H = estimateRigidTransform(coord2, coord1, false);
 
-  // 5. find homography
-  H = estimateRigidTransform(coord2, coord1, false);
-
-  // 6. calculate this stuff for information
-  rot_rad  = atan2(H.at<double>(0,1),H.at<double>(1,1));
-  rot_deg  = 180./M_PI* rot_rad;
-  transx   = H.at<double>(0,2);
-  transy   = H.at<double>(1,2);
-  scalex   = sqrt(pow(H.at<double>(0,0),2)+pow(H.at<double>(0,1),2));
-  scaley   = sqrt(pow(H.at<double>(1,0),2)+pow(H.at<double>(1,1),2));
+      if(H.empty() || H.rows < 3 || H.cols < 3)
+      {
+          is_valid = false;
+      }
+      else
+      {
+          // 6. calculate this stuff for information
+          rot_rad  = atan2(H.at<double>(0,1),H.at<double>(1,1));
+          rot_deg  = 180./M_PI* rot_rad;
+          transx   = H.at<double>(0,2);
+          transy   = H.at<double>(1,2);
+          scalex   = sqrt(pow(H.at<double>(0,0),2)+pow(H.at<double>(0,1),2));
+          scaley   = sqrt(pow(H.at<double>(1,0),2)+pow(H.at<double>(1,1),2));
+      }
+  }
 }
 
 Mat
