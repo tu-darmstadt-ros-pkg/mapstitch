@@ -100,11 +100,9 @@ int main(int argc, char** argv)
   }
 
   if (verbose) {
-    namedWindow("wrap"); imshow("wrap", map.get_stitch()); imwrite("stitch.pgm", map.get_stitch());
-    namedWindow("debug"); imshow("debug", map.get_debug()); imwrite("debug.pgm", map.get_debug());
+    /*namedWindow("wrap"); imshow("wrap", map.get_stitch());*/ imwrite("stitch.pgm", map.get_stitch());
+    /*namedWindow("debug"); imshow("debug", map.get_debug());*/ imwrite("debug.pgm", map.get_debug());
 
-    while ((waitKey(0)&255) != 10) // RETURN
-      ;
   }
 
   return 0;

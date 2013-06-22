@@ -26,6 +26,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "math.h"
 
 StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
+    : is_valid(true)
 {
   // load images, TODO: check that they're grayscale
   image1 = img1.clone();
@@ -66,6 +67,8 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
            fabs(norm(a1.pt-a2.pt) - norm(b1.pt-b2.pt)) == 0)
         continue;
 
+      matches_filtered.push_back(matches[j]);
+
       coord1.push_back(a1.pt);
       coord1.push_back(a2.pt);
       coord2.push_back(b1.pt);
@@ -87,11 +90,11 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
       // 5. find homography
       H = estimateRigidTransform(coord2, coord1, false);
 
-      if(H.empty() || H.rows < 3 || H.cols < 3)
-      {
-          is_valid = false;
-      }
-      else
+//      if(H.empty() || H.rows < 3 || H.cols < 3)
+//      {
+//          is_valid = false;
+//      }
+//      else
       {
           // 6. calculate this stuff for information
           rot_rad  = atan2(H.at<double>(0,1),H.at<double>(1,1));
@@ -110,7 +113,8 @@ StitchedMap::get_debug()
   Mat out;
   drawKeypoints(image1, kpv1, image1, Scalar(255,0,0));
   drawKeypoints(image2, kpv2, image2, Scalar(255,0,0));
-  drawMatches(image1,fil1, image2,fil2, matches,out,Scalar::all(-1),Scalar::all(-1));
+  drawMatches(image1,fil1, image2,fil2, matches_filtered,out,Scalar::all(-1),Scalar::all(-1));
+  std::cout << "total matches: " << matches.size() << " filtered matches: " << matches_filtered.size() << std::endl;
   return out;
 }
 

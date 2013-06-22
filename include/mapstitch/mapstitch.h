@@ -26,6 +26,7 @@ public:
   vector<KeyPoint> fil1,fil2;
   vector<Point2f>  coord1,coord2;
   vector<DMatch>   matches;
+  vector<DMatch>   matches_filtered;
 
   double rot_deg,rot_rad,transx,transy,scalex,scaley;
 };
