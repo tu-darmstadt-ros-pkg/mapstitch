@@ -90,11 +90,11 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
       // 5. find homography
       H = estimateRigidTransform(coord2, coord1, false);
 
-//      if(H.empty() || H.rows < 3 || H.cols < 3)
-//      {
-//          is_valid = false;
-//      }
-//      else
+      if(H.empty() /*|| H.rows < 3 || H.cols < 3*/)
+      {
+          is_valid = false;
+      }
+      else
       {
           // 6. calculate this stuff for information
           rot_rad  = atan2(H.at<double>(0,1),H.at<double>(1,1));
