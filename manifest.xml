@@ -7,7 +7,7 @@
     are no additional sanity checks like matching resolution of the supplied
     maps.
 
-    he neccesary transformation (with
+    The estimated transform (with
     3 DOF, rotation and translation) is either published as tf between the
     /world and /map frame, returned on the command line or saved as a stitched
     image.
