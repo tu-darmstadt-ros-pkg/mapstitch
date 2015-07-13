@@ -295,8 +295,8 @@ bool StitchedMap::isValid()
 }
 
 Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
-                                          const vector<KeyPoint> input,
-                                          const vector<KeyPoint> dest)
+                                          const vector<KeyPoint> dest,
+                                          const vector<KeyPoint> input)
 {
 
   bool found_solution = false;
@@ -341,7 +341,7 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
     }
 
     if (!rigid_transform.empty()){
-      found_solution = false;
+      found_solution = true;
     }else{
       //std::cout << "Didn't find solution!\n";
     }

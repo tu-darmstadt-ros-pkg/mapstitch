@@ -21,8 +21,8 @@ public:
   bool isValid();
 
   Mat estimateHomographyRansac(const vector<DMatch>& matches,
-                                const vector<KeyPoint> input,
-                                const vector<KeyPoint> dest);
+                                const vector<KeyPoint> dest,
+                                const vector<KeyPoint> input);
 
   Mat H; // transformation matrix
   double rot_deg,rot_rad,transx,transy,scalex,scaley;
