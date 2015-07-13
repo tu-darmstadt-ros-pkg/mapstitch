@@ -294,20 +294,45 @@ bool StitchedMap::isValid()
   return is_valid;
 }
 
+
+Mat StitchedMap::getTransformForThreePoints(const vector<DMatch>& matches,
+                               const vector<KeyPoint>& dest,
+                               const vector<KeyPoint>& input,
+                               const vector<int>& indices)
+{
+  std::vector<cv::Point2f> input_ransac;
+  std::vector<cv::Point2f> dest_ransac;
+
+  for(int i = 0; i < 3;++i){
+    input_ransac.push_back(input[matches[indices[i]].queryIdx].pt);
+    dest_ransac.push_back(dest[matches[indices[i]].queryIdx].pt);
+  }
+
+  return estimateRigidTransform(input_ransac, dest_ransac, false);
+}
+
 Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
-                                          const vector<KeyPoint> dest,
-                                          const vector<KeyPoint> input)
+                                          const vector<KeyPoint>& dest,
+                                          const vector<KeyPoint>& input)
 {
 
   bool found_solution = false;
   CvRNG rng( 0xFFFFFFFF );
 
-  int idx[3];
+  //int idx[3];
+  std::vector<int> idx;
+  idx.resize(3);
 
   Mat rigid_transform;
 
-  while (!found_solution){
+  int num_iterations = 0;
 
+  int max_num_inliers = -1;
+  std::vector<int> best_indices_vector;
+
+  while (num_iterations < 500){
+
+    /*
     std::vector<cv::Point2f> input_ransac;
     std::vector<cv::Point2f> dest_ransac;
 
@@ -320,6 +345,17 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
 
 
     rigid_transform = estimateRigidTransform(input_ransac, dest_ransac, false);
+    */
+
+    for(int i = 0; i < 3;++i){
+      idx[i] = cvRandInt(&rng) % matches.size();
+    }
+
+    rigid_transform = getTransformForThreePoints(matches,
+                                                 dest,
+                                                 input,
+                                                 idx);
+
     //H = estimateRigidTransform(image1, image2, false);
 
     if (!rigid_transform.empty()){
@@ -333,11 +369,18 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
 
         Eigen::Vector2f transformed_to_dest = transform * Eigen::Vector2f(input[j].pt.x, input[j].pt.y);
 
-        if ((transformed_to_dest - Eigen::Vector2f(dest[j].pt.x, dest[j].pt.y)).norm() < 16 ){
+        float dist = (transformed_to_dest - Eigen::Vector2f(dest[j].pt.x, dest[j].pt.y)).norm();
+
+        if (dist < 16 ){
           ++num_inliers;
         }
       }
       std::cout << "num_inliers: " << num_inliers << "\n";
+
+      if (num_inliers > max_num_inliers){
+        max_num_inliers = num_inliers;
+        best_indices_vector = idx;
+      }
     }
 
     if (!rigid_transform.empty()){
@@ -345,8 +388,16 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
     }else{
       //std::cout << "Didn't find solution!\n";
     }
-
+    ++num_iterations;
   }
+
+  rigid_transform = getTransformForThreePoints(matches,
+                                               dest,
+                                               input,
+                                               best_indices_vector);
+
+
+
 
   return rigid_transform;
 }
