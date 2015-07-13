@@ -176,106 +176,23 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   }
   else
   {
-    // see https://github.com/Itseez/opencv/blob/2.4/modules/video/src/lkpyramid.cpp#L2173
-      // 5. find homography
+    H = this->estimateHomographyRansac(matches_filtered, fil1, fil2);
 
-      bool found_solution = false;
-      CvRNG rng( 0xFFFFFFFF );
-
-      int idx[3];
-
-      while (!found_solution){
-
-        std::vector<cv::Point2f> input;
-        std::vector<cv::Point2f> dest;
-
-        for(int i = 0; i < 3;++i){
-          idx[i] = cvRandInt(&rng) % coord2.size();
-
-          input.push_back(coord2[idx[i]]);
-          dest.push_back(coord1[idx[i]]);
-
-        }
-
-
-        H = estimateRigidTransform(input, dest, false);
-        //H = estimateRigidTransform(image1, image2, false);
-
-        if (!H.empty()){
-
-          //Eigen::Vector2f vec(input[0].x, input[0].y);
-          //Eigen::Matrix< float, 2, 3 > 	 matrix;
-          //Eigen::Transform2d test;
-          //Eigen::Transform<float, 2, Eigen::AffineCompact> test;
-
-          //cv2eigen(H, matrix);
-
-          //Eigen::Vector2f transformed = transform * vec;
-
-          //std::cout << "\nbla\n" << H << "\n--\n" << transform.matrix() << "\n";
-
-
-          //Mat c2_t = H * vec;
-          //std::cout << "\nbla\n" << transformed << "\n--\n" << dest[0] << "\n";
-
-          Eigen::AffineCompact2f transform;
-
-          cv2eigen(H, transform.matrix());
-
-          int num_inliers = 0;
-          for (size_t j = 0; j < coord2.size(); ++j){
-
-            Eigen::Vector2f transformed_to_dest = transform * Eigen::Vector2f(coord2[j].x, coord2[j].y);
-
-            if ((transformed_to_dest - Eigen::Vector2f(coord1[j].x, coord1[j].y)).norm() < 16 ){
-              ++num_inliers;
-            }
-          }
-          std::cout << "num_inliers: " << num_inliers << "\n";
-        }
-
-        if (!H.empty()){
-          //found_solution = true;
-        }else{
-          //std::cout << "Didn't find solution!\n";
-        }
-
-      }
-
-      if(H.empty() /*|| H.rows < 3 || H.cols < 3*/)
-      {
-        std::cout << "H Matrix empty\n";
-        is_valid = false;
-      }
-      else
-      {
-        // 6. calculate this stuff for information
-        rot_rad  = atan2(H.at<double>(0,1),H.at<double>(1,1));
-        rot_deg  = 180./M_PI* rot_rad;
-        transx   = H.at<double>(0,2);
-        transy   = H.at<double>(1,2);
-        scalex   = sqrt(pow(H.at<double>(0,0),2)+pow(H.at<double>(0,1),2));
-        scaley   = sqrt(pow(H.at<double>(1,0),2)+pow(H.at<double>(1,1),2));
-      }
-
-
-      /*
-      std::vector<cv::Point3f> input_points;
-      std::vector<cv::Point3f> dst_points;
-      input_points.resize(coord1.size());
-      dst_points.resize(coord1.size());
-
-      for (size_t i = 0; i < coord1.size(); ++i){
-        input_points[i] = cv::Point3f(coord1[i].x, coord1[i].y, 0.0f);
-        dst_points[i] = cv::Point3f(coord2[i].x, coord2[i].y, 0.0f);
-      }
-
-      //Mat homography = cv::findHomography(input_points, dst_points, CV_RANSAC);
-      Mat homography = cv::findHomography(coord1, coord2, CV_RANSAC);
-
-
-      cout << homography;
-      */
+    if(H.empty() /*|| H.rows < 3 || H.cols < 3*/)
+    {
+      std::cout << "H Matrix empty\n";
+      is_valid = false;
+    }
+    else
+    {
+      // 6. calculate this stuff for information
+      rot_rad  = atan2(H.at<double>(0,1),H.at<double>(1,1));
+      rot_deg  = 180./M_PI* rot_rad;
+      transx   = H.at<double>(0,2);
+      transy   = H.at<double>(1,2);
+      scalex   = sqrt(pow(H.at<double>(0,0),2)+pow(H.at<double>(0,1),2));
+      scaley   = sqrt(pow(H.at<double>(1,0),2)+pow(H.at<double>(1,1),2));
+    }
 
   }
 }
@@ -376,5 +293,63 @@ bool StitchedMap::isValid()
 {
   return is_valid;
 }
+
+Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
+                                          const vector<KeyPoint> input,
+                                          const vector<KeyPoint> dest)
+{
+
+  bool found_solution = false;
+  CvRNG rng( 0xFFFFFFFF );
+
+  int idx[3];
+
+  Mat rigid_transform;
+
+  while (!found_solution){
+
+    std::vector<cv::Point2f> input_ransac;
+    std::vector<cv::Point2f> dest_ransac;
+
+    for(int i = 0; i < 3;++i){
+      idx[i] = cvRandInt(&rng) % matches.size();
+
+      input_ransac.push_back(input[matches[idx[i]].queryIdx].pt);
+      dest_ransac.push_back(dest[matches[idx[i]].queryIdx].pt);
+    }
+
+
+    rigid_transform = estimateRigidTransform(input_ransac, dest_ransac, false);
+    //H = estimateRigidTransform(image1, image2, false);
+
+    if (!rigid_transform.empty()){
+
+      Eigen::AffineCompact2f transform;
+
+      cv2eigen(rigid_transform, transform.matrix());
+
+      int num_inliers = 0;
+      for (size_t j = 0; j < input.size(); ++j){
+
+        Eigen::Vector2f transformed_to_dest = transform * Eigen::Vector2f(input[j].pt.x, input[j].pt.y);
+
+        if ((transformed_to_dest - Eigen::Vector2f(dest[j].pt.x, dest[j].pt.y)).norm() < 16 ){
+          ++num_inliers;
+        }
+      }
+      std::cout << "num_inliers: " << num_inliers << "\n";
+    }
+
+    if (!rigid_transform.empty()){
+      found_solution = false;
+    }else{
+      //std::cout << "Didn't find solution!\n";
+    }
+
+  }
+
+  return rigid_transform;
+}
+
 
 StitchedMap::~StitchedMap() { }
