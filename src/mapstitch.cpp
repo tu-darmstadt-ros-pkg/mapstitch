@@ -315,8 +315,6 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
                                           const vector<KeyPoint>& dest,
                                           const vector<KeyPoint>& input)
 {
-
-  bool found_solution = false;
   CvRNG rng( 0xFFFFFFFF );
 
   //int idx[3];
@@ -330,22 +328,7 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
   int max_num_inliers = -1;
   std::vector<int> best_indices_vector;
 
-  while (num_iterations < 500){
-
-    /*
-    std::vector<cv::Point2f> input_ransac;
-    std::vector<cv::Point2f> dest_ransac;
-
-    for(int i = 0; i < 3;++i){
-      idx[i] = cvRandInt(&rng) % matches.size();
-
-      input_ransac.push_back(input[matches[idx[i]].queryIdx].pt);
-      dest_ransac.push_back(dest[matches[idx[i]].queryIdx].pt);
-    }
-
-
-    rigid_transform = estimateRigidTransform(input_ransac, dest_ransac, false);
-    */
+  while (num_iterations < 5000){
 
     for(int i = 0; i < 3;++i){
       idx[i] = cvRandInt(&rng) % matches.size();
@@ -375,7 +358,7 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
           ++num_inliers;
         }
       }
-      std::cout << "num_inliers: " << num_inliers << "\n";
+      //std::cout << "num_inliers: " << num_inliers << "\n";
 
       if (num_inliers > max_num_inliers){
         max_num_inliers = num_inliers;
@@ -383,11 +366,13 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
       }
     }
 
+    /*
     if (!rigid_transform.empty()){
       found_solution = true;
     }else{
       //std::cout << "Didn't find solution!\n";
     }
+    */
     ++num_iterations;
   }
 
@@ -396,8 +381,29 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
                                                input,
                                                best_indices_vector);
 
+  Eigen::AffineCompact2f transform;
 
+  cv2eigen(rigid_transform, transform.matrix());
 
+  std::vector<cv::Point2f> input_inliers;
+  std::vector<cv::Point2f> dest_inliers;
+
+  int num_inliers = 0;
+  for (size_t j = 0; j < input.size(); ++j){
+
+    Eigen::Vector2f transformed_to_dest = transform * Eigen::Vector2f(input[j].pt.x, input[j].pt.y);
+
+    float dist = (transformed_to_dest - Eigen::Vector2f(dest[j].pt.x, dest[j].pt.y)).norm();
+
+    if (dist < 16 ){
+      ++num_inliers;
+      input_inliers.push_back(input[j].pt);
+      dest_inliers.push_back(dest[j].pt);
+
+    }
+  }
+
+  rigid_transform = estimateRigidTransform(input_inliers, dest_inliers, false);
 
   return rigid_transform;
 }
