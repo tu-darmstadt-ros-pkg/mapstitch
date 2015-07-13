@@ -235,7 +235,7 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
         }
 
         if (!H.empty()){
-          //found_solution = true;
+          found_solution = true;
         }else{
           //std::cout << "Didn't find solution!\n";
         }
