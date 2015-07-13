@@ -18,6 +18,7 @@ public:
   Mat get_stitch();
 
   void printDebugOutput();
+  bool isValid();
 
   Mat H; // transformation matrix
   double rot_deg,rot_rad,transx,transy,scalex,scaley;
@@ -33,7 +34,6 @@ protected:
   vector<Point2f>  coord1,coord2;
   vector<DMatch>   matches;
   vector<DMatch>   matches_filtered;
-
 
 };
 

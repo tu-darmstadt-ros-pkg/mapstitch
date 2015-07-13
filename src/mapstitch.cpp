@@ -25,6 +25,11 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mapstitch/mapstitch.h"
 #include "math.h"
 
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+
+#include <opencv2/core/eigen.hpp>
+
 StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
     : is_valid(true)
 {
@@ -44,9 +49,18 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   image1 = img1.clone();
   image2 = img2.clone();
 
+  int nfeatures = 500;
+  float scaleFactor = 1.2f;
+  int nlevels=8;
+  int edgeThreshold = 31;
+  int firstLevel = 0;
+  int WTA_K=2;
+  int scoreType=ORB::HARRIS_SCORE;
+  int patchSize=31;
+
   // create feature detector set.
-  OrbFeatureDetector detector;
-  OrbDescriptorExtractor dexc;
+  OrbFeatureDetector detector(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
+  OrbDescriptorExtractor dexc(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
   BFMatcher dematc(NORM_HAMMING, false);
 
   // 1. extract keypoints
@@ -67,6 +81,8 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
 
   float min_dist = std::numeric_limits<float>::max();
   int min_index = -1;
+
+  int good_count = 0;
 
   // 4. find matching point pairs with same distance in both images
   for (size_t i=0; i<matches.size(); i++) {
@@ -90,6 +106,7 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
       float dist = fabs(norm(a1.pt-a2.pt) - norm(b1.pt-b2.pt));
 
       if ( dist < max_pairwise_distance){
+        good_count++;
         if (dist < min_dist){
           min_dist = dist;
           min_index = j;
@@ -97,6 +114,32 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
       }
     }
 
+    if(good_count > 5){
+      //KeyPoint a2 = kpv1[matches[min_index].queryIdx],
+      //         b2 = kpv2[matches[min_index].trainIdx];
+
+      matches_filtered.push_back(matches[min_index]);
+      matches_filtered.back().queryIdx = idx;
+      matches_filtered.back().trainIdx = idx;
+
+      coord1.push_back(a1.pt);
+      //coord1.push_back(a2.pt);
+      coord2.push_back(b1.pt);
+      //coord2.push_back(b2.pt);
+
+      fil1.push_back(a1);
+      fil2.push_back(b1);
+
+      //std::cout << "mf: " << matches_filtered.back().queryIdx << " " << matches_filtered.back().trainIdx << "\n";
+      //std::cout << "a1: " << a1.pt.x << " " << a1.pt.y << "\n";
+      //std::cout << "b1: " << b1.pt.x << " " << b1.pt.y << "\n";
+      //std::cout << "a2: " << a2.pt.x << " " << a2.pt.y << "\n";
+      //std::cout << "b2: " << b2.pt.x << " " << b2.pt.y << "\n";
+
+      ++idx;
+    }
+
+    /*
     if(min_index > -1){
       KeyPoint a2 = kpv1[matches[min_index].queryIdx],
                b2 = kpv2[matches[min_index].trainIdx];
@@ -113,15 +156,15 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
       fil1.push_back(a1);
       fil2.push_back(b1);
 
-      /*
-      std::cout << "mf: " << matches_filtered.back().queryIdx << " " << matches_filtered.back().trainIdx << "\n";
-      std::cout << "a1: " << a1.pt.x << " " << a1.pt.y << "\n";
-      std::cout << "b1: " << b1.pt.x << " " << b1.pt.y << "\n";
-      std::cout << "a2: " << a2.pt.x << " " << a2.pt.y << "\n";
-      std::cout << "b2: " << b2.pt.x << " " << b2.pt.y << "\n";
-      */
+      //std::cout << "mf: " << matches_filtered.back().queryIdx << " " << matches_filtered.back().trainIdx << "\n";
+      //std::cout << "a1: " << a1.pt.x << " " << a1.pt.y << "\n";
+      //std::cout << "b1: " << b1.pt.x << " " << b1.pt.y << "\n";
+      //std::cout << "a2: " << a2.pt.x << " " << a2.pt.y << "\n";
+      //std::cout << "b2: " << b2.pt.x << " " << b2.pt.y << "\n";
+
       ++idx;
     }
+    */
 
   }
 
@@ -133,24 +176,99 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   }
   else
   {
+    // see https://github.com/Itseez/opencv/blob/2.4/modules/video/src/lkpyramid.cpp#L2173
       // 5. find homography
-      H = estimateRigidTransform(coord2, coord1, false);
+
+      bool found_solution = false;
+      CvRNG rng( 0xFFFFFFFF );
+
+      int idx[3];
+
+      while (!found_solution){
+
+        std::vector<cv::Point2f> input;
+        std::vector<cv::Point2f> dest;
+
+        for(int i = 0; i < 3;++i){
+          idx[i] = cvRandInt(&rng) % coord2.size();
+
+          input.push_back(coord2[idx[i]]);
+          dest.push_back(coord1[idx[i]]);
+
+        }
+
+
+        H = estimateRigidTransform(input, dest, false);
+        //H = estimateRigidTransform(image1, image2, false);
+
+        if (!H.empty()){
+
+          Eigen::Vector2f vec(dest[0].x, dest[0].y);
+          Eigen::Matrix< float, 2, 3 > 	 matrix;
+          //Eigen::Transform2d test;
+          //Eigen::Transform<float, 2, Eigen::AffineCompact> test;
+          Eigen::AffineCompact2f transform;
+
+          cv2eigen(H, transform.matrix());
+
+          //cv2eigen(H, matrix);
+
+          Eigen::Vector2f transformed = transform.inverse() * vec;
+
+          std::cout << "\nbla\n" << H << "\n--\n" << transform.matrix() << "\n";
+
+
+          //Mat c2_t = H * vec;
+          std::cout << "\nbla\n" << transformed << "\n--\n" << input[0] << "\n";
+
+          for (size_t j = 0; j < coord2.size(); ++j){
+            //Mat transformed = H * Mat(coord1[j]);
+          }
+        }
+
+        if (!H.empty()){
+          found_solution = true;
+        }else{
+          std::cout << "Didn't find solution!\n";
+        }
+
+      }
 
       if(H.empty() /*|| H.rows < 3 || H.cols < 3*/)
       {
-          std::cout << "H Matrix empty\n";
-          is_valid = false;
+        std::cout << "H Matrix empty\n";
+        is_valid = false;
       }
       else
       {
-          // 6. calculate this stuff for information
-          rot_rad  = atan2(H.at<double>(0,1),H.at<double>(1,1));
-          rot_deg  = 180./M_PI* rot_rad;
-          transx   = H.at<double>(0,2);
-          transy   = H.at<double>(1,2);
-          scalex   = sqrt(pow(H.at<double>(0,0),2)+pow(H.at<double>(0,1),2));
-          scaley   = sqrt(pow(H.at<double>(1,0),2)+pow(H.at<double>(1,1),2));
+        // 6. calculate this stuff for information
+        rot_rad  = atan2(H.at<double>(0,1),H.at<double>(1,1));
+        rot_deg  = 180./M_PI* rot_rad;
+        transx   = H.at<double>(0,2);
+        transy   = H.at<double>(1,2);
+        scalex   = sqrt(pow(H.at<double>(0,0),2)+pow(H.at<double>(0,1),2));
+        scaley   = sqrt(pow(H.at<double>(1,0),2)+pow(H.at<double>(1,1),2));
       }
+
+
+      /*
+      std::vector<cv::Point3f> input_points;
+      std::vector<cv::Point3f> dst_points;
+      input_points.resize(coord1.size());
+      dst_points.resize(coord1.size());
+
+      for (size_t i = 0; i < coord1.size(); ++i){
+        input_points[i] = cv::Point3f(coord1[i].x, coord1[i].y, 0.0f);
+        dst_points[i] = cv::Point3f(coord2[i].x, coord2[i].y, 0.0f);
+      }
+
+      //Mat homography = cv::findHomography(input_points, dst_points, CV_RANSAC);
+      Mat homography = cv::findHomography(coord1, coord2, CV_RANSAC);
+
+
+      cout << homography;
+      */
+
   }
 }
 
@@ -168,7 +286,21 @@ StitchedMap::get_debug()
     cv::circle(image2, coord2[i], 7, cv::Scalar(0,0 ,255));
   }
 
-  drawMatches(image1,fil1, image2,fil2, matches_filtered,out,Scalar::all(-1),Scalar::all(-1));
+  if (this->is_valid){
+    drawMatches(image1,fil1, image2,fil2, matches_filtered,out,Scalar::all(-1),Scalar::all(-1));
+  }else{
+    /*
+    Mat img_matches = Mat(image1.cols+image2.cols,image1.rows,image1.type());//set size as combination of img1 and img2
+
+
+    Mat left(img_matches, Rect(0, 0, image1.cols, image1.rows)); // Copy constructor
+    image1.copyTo(left);
+    Mat right(img_matches, Rect(image1.cols, 0, image1.cols, image1.rows)); // Copy constructor
+    image2.copyTo(right);
+    */
+
+    out = image1;
+  }
   return out;
 }
 
@@ -230,6 +362,11 @@ void StitchedMap::printDebugOutput()
   cout << "rotation: "          << rot_deg << endl
        << "translation (x,y): " << transx << ", " << transy << endl
        << "matrix: "            << H << endl;
+}
+
+bool StitchedMap::isValid()
+{
+  return is_valid;
 }
 
 StitchedMap::~StitchedMap() { }

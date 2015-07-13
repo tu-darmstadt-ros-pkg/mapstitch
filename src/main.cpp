@@ -55,8 +55,8 @@ int main(int argc, char** argv)
                   "", "string",cmd);
   UnlabeledMultiArg<string> multi("fileName", "input file names (first one is pivot element)", false, "file1 and file2", cmd);
 
-  //std::string bla;
-  //std::cin >> bla;
+  std::string bla;
+  std::cin >> bla;
 
   cmd.parse( argc, argv );
 
@@ -92,7 +92,7 @@ int main(int argc, char** argv)
   StitchedMap map(images[0],images[1], max_distance);
 
   // write to outfile if applicable
-  if (outfile.size() != 0) {
+  if (outfile.size() != 0 && map.isValid()) {
     imwrite(outfile, map.get_stitch());
   }
 
@@ -101,7 +101,10 @@ int main(int argc, char** argv)
   }
 
   if (verbose) {
-    namedWindow("wrap"); imshow("wrap", map.get_stitch()); //imwrite("stitch.pgm", map.get_stitch());
+    if (map.isValid()){
+      namedWindow("wrap"); imshow("wrap", map.get_stitch()); //imwrite("stitch.pgm", map.get_stitch());
+    }
+
     namedWindow("debug"); imshow("debug", map.get_debug()); //imwrite("debug.pgm", map.get_debug());
     cv::waitKey(0);
   }
