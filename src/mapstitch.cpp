@@ -203,33 +203,41 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
 
         if (!H.empty()){
 
-          Eigen::Vector2f vec(dest[0].x, dest[0].y);
-          Eigen::Matrix< float, 2, 3 > 	 matrix;
+          //Eigen::Vector2f vec(input[0].x, input[0].y);
+          //Eigen::Matrix< float, 2, 3 > 	 matrix;
           //Eigen::Transform2d test;
           //Eigen::Transform<float, 2, Eigen::AffineCompact> test;
+
+          //cv2eigen(H, matrix);
+
+          //Eigen::Vector2f transformed = transform * vec;
+
+          //std::cout << "\nbla\n" << H << "\n--\n" << transform.matrix() << "\n";
+
+
+          //Mat c2_t = H * vec;
+          //std::cout << "\nbla\n" << transformed << "\n--\n" << dest[0] << "\n";
+
           Eigen::AffineCompact2f transform;
 
           cv2eigen(H, transform.matrix());
 
-          //cv2eigen(H, matrix);
-
-          Eigen::Vector2f transformed = transform.inverse() * vec;
-
-          std::cout << "\nbla\n" << H << "\n--\n" << transform.matrix() << "\n";
-
-
-          //Mat c2_t = H * vec;
-          std::cout << "\nbla\n" << transformed << "\n--\n" << input[0] << "\n";
-
+          int num_inliers = 0;
           for (size_t j = 0; j < coord2.size(); ++j){
-            //Mat transformed = H * Mat(coord1[j]);
+
+            Eigen::Vector2f transformed_to_dest = transform * Eigen::Vector2f(coord2[j].x, coord2[j].y);
+
+            if ((transformed_to_dest - Eigen::Vector2f(coord1[j].x, coord1[j].y)).norm() < 16 ){
+              ++num_inliers;
+            }
           }
+          std::cout << "num_inliers: " << num_inliers << "\n";
         }
 
         if (!H.empty()){
-          found_solution = true;
+          //found_solution = true;
         }else{
-          std::cout << "Didn't find solution!\n";
+          //std::cout << "Didn't find solution!\n";
         }
 
       }
