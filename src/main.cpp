@@ -55,6 +55,9 @@ int main(int argc, char** argv)
                   "", "string",cmd);
   UnlabeledMultiArg<string> multi("fileName", "input file names (first one is pivot element)", false, "file1 and file2", cmd);
 
+  //std::string bla;
+  //std::cin >> bla;
+
   cmd.parse( argc, argv );
 
   // Get the value parsed by each arg.

@@ -60,6 +60,14 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   // 3. match keypoints
   dematc.match(dscv1, dscv2, matches);
 
+  std::cout << "kpv1 size: " << kpv1.size() << " kpv2 size: " << kpv2.size() << "\n";
+
+
+  size_t idx = 0;
+
+  float min_dist = std::numeric_limits<float>::max();
+  int min_index = -1;
+
   // 4. find matching point pairs with same distance in both images
   for (size_t i=0; i<matches.size(); i++) {
     KeyPoint a1 = kpv1[matches[i].queryIdx],
@@ -69,17 +77,33 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
       continue;
 
     for (size_t j=0; j<matches.size(); j++) {
+
+      if (i == j)
+        continue;
+
       KeyPoint a2 = kpv1[matches[j].queryIdx],
                b2 = kpv2[matches[j].trainIdx];
 
       if (matches[j].distance > 30)
         continue;
 
-      if ( fabs(norm(a1.pt-a2.pt) - norm(b1.pt-b2.pt)) > max_pairwise_distance ||
-           fabs(norm(a1.pt-a2.pt) - norm(b1.pt-b2.pt)) == 0)
-        continue;
+      float dist = fabs(norm(a1.pt-a2.pt) - norm(b1.pt-b2.pt));
 
-      matches_filtered.push_back(matches[j]);
+      if ( dist < max_pairwise_distance){
+        if (dist < min_dist){
+          min_dist = dist;
+          min_index = j;
+        }
+      }
+    }
+
+    if(min_index > -1){
+      KeyPoint a2 = kpv1[matches[min_index].queryIdx],
+               b2 = kpv2[matches[min_index].trainIdx];
+
+      matches_filtered.push_back(matches[min_index]);
+      matches_filtered.back().queryIdx = idx;
+      matches_filtered.back().trainIdx = idx;
 
       coord1.push_back(a1.pt);
       coord1.push_back(a2.pt);
@@ -87,11 +111,21 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
       coord2.push_back(b2.pt);
 
       fil1.push_back(a1);
-      fil1.push_back(a2);
       fil2.push_back(b1);
-      fil2.push_back(b2);
+
+      /*
+      std::cout << "mf: " << matches_filtered.back().queryIdx << " " << matches_filtered.back().trainIdx << "\n";
+      std::cout << "a1: " << a1.pt.x << " " << a1.pt.y << "\n";
+      std::cout << "b1: " << b1.pt.x << " " << b1.pt.y << "\n";
+      std::cout << "a2: " << a2.pt.x << " " << a2.pt.y << "\n";
+      std::cout << "b2: " << b2.pt.x << " " << b2.pt.y << "\n";
+      */
+      ++idx;
     }
+
   }
+
+  std::cout << "num filtered matches: " << matches_filtered.size() << "\n";
 
   if (coord1.empty() || coord2.empty())
   {
@@ -104,6 +138,7 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
 
       if(H.empty() /*|| H.rows < 3 || H.cols < 3*/)
       {
+          std::cout << "H Matrix empty\n";
           is_valid = false;
       }
       else
@@ -124,8 +159,15 @@ StitchedMap::get_debug()
 {
   Mat out;
   std::cout << "total matches: " << matches.size() << " filtered matches: " << matches_filtered.size() << std::endl;
+  std::cout << "fil1 size: " << fil1.size() << " fil2 size: " << fil2.size() << "\n";
   drawKeypoints(image1, kpv1, image1, Scalar(255,0,0));
   drawKeypoints(image2, kpv2, image2, Scalar(255,0,0));
+
+  for (size_t i = 0; i <coord1.size();++i){
+    cv::circle(image1, coord1[i], 7, cv::Scalar(0,0 ,255));
+    cv::circle(image2, coord2[i], 7, cv::Scalar(0,0 ,255));
+  }
+
   drawMatches(image1,fil1, image2,fil2, matches_filtered,out,Scalar::all(-1),Scalar::all(-1));
   return out;
 }
