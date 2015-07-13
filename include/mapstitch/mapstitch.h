@@ -40,6 +40,10 @@ protected:
 
   vector<KeyPoint> kpv1,kpv2;
   vector<KeyPoint> fil1,fil2;
+
+  std::vector<cv::Point2f> input_inliers;
+  std::vector<cv::Point2f> dest_inliers;
+
   vector<Point2f>  coord1,coord2;
   vector<DMatch>   matches;
   vector<DMatch>   matches_filtered;

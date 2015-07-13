@@ -148,6 +148,8 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   else
   {
     H = this->estimateHomographyRansac(matches_filtered, fil1, fil2);
+    //H = this->estimateHomographyRansac(matches, kpv1, kpv2);
+
 
     if(H.empty() /*|| H.rows < 3 || H.cols < 3*/)
     {
@@ -181,6 +183,12 @@ StitchedMap::get_debug()
     cv::circle(image1, coord1[i], 7, cv::Scalar(0,0 ,255));
     cv::circle(image2, coord2[i], 7, cv::Scalar(0,0 ,255));
   }
+
+  for (size_t i = 0; i <input_inliers.size();++i){
+    cv::circle(image1, dest_inliers[i], 9, cv::Scalar(255, 0 ,255), 2);
+    cv::circle(image2, input_inliers[i], 9, cv::Scalar(255, 0 ,255), 2);
+  }
+
 
   if (this->is_valid){
     drawMatches(image1,fil1, image2,fil2, matches_filtered,out,Scalar::all(-1),Scalar::all(-1));
@@ -304,7 +312,7 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
   int max_num_inliers = -1;
   std::vector<int> best_indices_vector;
 
-  while (num_iterations < 500){
+  while (num_iterations < 5000){
 
     for(int i = 0; i < 3;++i){
       idx[i] = cvRandInt(&rng) % matches.size();
@@ -338,6 +346,8 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
       if (num_inliers > max_num_inliers){
         max_num_inliers = num_inliers;
         best_indices_vector = idx;
+
+        std::cout << "\ninlier: " << max_num_inliers;
       }
     }
 
@@ -353,8 +363,8 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
 
   cv2eigen(rigid_transform, transform.matrix());
 
-  std::vector<cv::Point2f> input_inliers;
-  std::vector<cv::Point2f> dest_inliers;
+  //std::vector<cv::Point2f> input_inliers;
+  //std::vector<cv::Point2f> dest_inliers;
 
   int num_inliers = 0;
   for (size_t j = 0; j < input.size(); ++j){
@@ -373,7 +383,12 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
     }
   }
 
-  rigid_transform = estimateRigidTransform(input_inliers, dest_inliers, false);
+  Mat best_estimate_transform = estimateRigidTransform(input_inliers, dest_inliers, false);
+
+  if (!best_estimate_transform.empty()){
+    std::cout << "inlier rigid transform estimation failed.";
+    rigid_transform = best_estimate_transform;
+  }
 
   return rigid_transform;
 }
