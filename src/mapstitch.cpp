@@ -30,6 +30,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/core/eigen.hpp>
 
+#include <robust_matcher/robust_matcher.h>
+
 StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
     : is_valid(true)
 {
@@ -59,20 +61,36 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   int patchSize=31;
 
   // create feature detector set.
-  OrbFeatureDetector detector(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
-  OrbDescriptorExtractor dexc(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
-  BFMatcher dematc(NORM_HAMMING, false);
+  OrbFeatureDetector* detector = new OrbFeatureDetector(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
+  OrbDescriptorExtractor* dexc = new OrbDescriptorExtractor(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
+  BFMatcher* dematc = new BFMatcher(NORM_HAMMING, false);
+
+  RobustMatcher robust_matcher;
+
+  robust_matcher.setFeatureDetector(detector);
+  robust_matcher.setDescriptorExtractor(dexc);
+  robust_matcher.setDescriptorMatcher(dematc);
+
+  //vector<KeyPoint> keypoints_image2;
+  robust_matcher.computeKeyPoints(image2, keypoints_image2);
+
+  Mat descriptors_image2;
+  robust_matcher.computeDescriptors(image2, keypoints_image2, descriptors_image2);
+
+  robust_matcher.robustMatch(image1, matches_robust, keypoints_image1, descriptors_image2);
+
+  std::cout << "Robust matches: " << matches_robust.size()<< "\n";
 
   // 1. extract keypoints
-  detector.detect(image1, kpv1);
-  detector.detect(image2, kpv2);
+  detector->detect(image1, kpv1);
+  detector->detect(image2, kpv2);
 
   // 2. extract descriptors
-  dexc.compute(image1, kpv1, dscv1);
-  dexc.compute(image2, kpv2, dscv2);
+  dexc->compute(image1, kpv1, dscv1);
+  dexc->compute(image2, kpv2, dscv2);
 
   // 3. match keypoints
-  dematc.match(dscv1, dscv2, matches);
+  dematc->match(dscv1, dscv2, matches);
 
   std::cout << "kpv1 size: " << kpv1.size() << " kpv2 size: " << kpv2.size() << "\n";
 
@@ -149,6 +167,7 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   {
     H = this->estimateHomographyRansac(matches_filtered, fil1, fil2);
     //H = this->estimateHomographyRansac(matches, kpv1, kpv2);
+    //H = this->estimateHomographyRansac(matches_robust, keypoints_image2, keypoints_image1);
 
 
     if(H.empty() /*|| H.rows < 3 || H.cols < 3*/)
@@ -367,7 +386,7 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
   //std::vector<cv::Point2f> dest_inliers;
 
   int num_inliers = 0;
-  for (size_t j = 0; j < input.size(); ++j){
+  for (size_t j = 0; j < matches.size(); ++j){
 
     Eigen::Vector2f transformed_to_dest = transform * Eigen::Vector2f(input[matches[j].queryIdx].pt.x,
                                                                       input[matches[j].queryIdx].pt.y);

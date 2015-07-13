@@ -6,11 +6,13 @@ SET(HDRS
 SET(SRCS
         main.cpp
         mapstitch.cpp
+        robust_matcher.cpp
 )
 
 SET(ROS_COMPONENT
         rosmain.cpp
         mapstitch.cpp
+        robust_matcher.cpp
 )
 
 rosbuild_add_executable(mapstitch_tool ${SRCS} ${HDRS})

@@ -39,6 +39,7 @@ protected:
   bool is_valid;
 
   vector<KeyPoint> kpv1,kpv2;
+  vector<KeyPoint> keypoints_image1, keypoints_image2;
   vector<KeyPoint> fil1,fil2;
 
   std::vector<cv::Point2f> input_inliers;
@@ -46,6 +47,7 @@ protected:
 
   vector<Point2f>  coord1,coord2;
   vector<DMatch>   matches;
+  vector<DMatch>   matches_robust;
   vector<DMatch>   matches_filtered;
 
 };
