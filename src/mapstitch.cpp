@@ -114,9 +114,7 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
       }
     }
 
-    if(good_count > 5){
-      //KeyPoint a2 = kpv1[matches[min_index].queryIdx],
-      //         b2 = kpv2[matches[min_index].trainIdx];
+    if(good_count > 0){
 
       matches_filtered.push_back(matches[min_index]);
       matches_filtered.back().queryIdx = idx;
@@ -138,33 +136,6 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
 
       ++idx;
     }
-
-    /*
-    if(min_index > -1){
-      KeyPoint a2 = kpv1[matches[min_index].queryIdx],
-               b2 = kpv2[matches[min_index].trainIdx];
-
-      matches_filtered.push_back(matches[min_index]);
-      matches_filtered.back().queryIdx = idx;
-      matches_filtered.back().trainIdx = idx;
-
-      coord1.push_back(a1.pt);
-      coord1.push_back(a2.pt);
-      coord2.push_back(b1.pt);
-      coord2.push_back(b2.pt);
-
-      fil1.push_back(a1);
-      fil2.push_back(b1);
-
-      //std::cout << "mf: " << matches_filtered.back().queryIdx << " " << matches_filtered.back().trainIdx << "\n";
-      //std::cout << "a1: " << a1.pt.x << " " << a1.pt.y << "\n";
-      //std::cout << "b1: " << b1.pt.x << " " << b1.pt.y << "\n";
-      //std::cout << "a2: " << a2.pt.x << " " << a2.pt.y << "\n";
-      //std::cout << "b2: " << b2.pt.x << " " << b2.pt.y << "\n";
-
-      ++idx;
-    }
-    */
 
   }
 
@@ -305,7 +276,7 @@ Mat StitchedMap::getTransformForThreePoints(const vector<DMatch>& matches,
 
   for(int i = 0; i < 3;++i){
     input_ransac.push_back(input[matches[indices[i]].queryIdx].pt);
-    dest_ransac.push_back(dest[matches[indices[i]].queryIdx].pt);
+    dest_ransac.push_back(dest[matches[indices[i]].trainIdx].pt);
   }
 
   return estimateRigidTransform(input_ransac, dest_ransac, false);
@@ -315,6 +286,11 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
                                           const vector<KeyPoint>& dest,
                                           const vector<KeyPoint>& input)
 {
+
+  float inlier_dist_threshold = 16.0;
+
+  float inlier_dist_threshold_squared = inlier_dist_threshold * inlier_dist_threshold;
+
   CvRNG rng( 0xFFFFFFFF );
 
   //int idx[3];
@@ -328,7 +304,7 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
   int max_num_inliers = -1;
   std::vector<int> best_indices_vector;
 
-  while (num_iterations < 5000){
+  while (num_iterations < 500){
 
     for(int i = 0; i < 3;++i){
       idx[i] = cvRandInt(&rng) % matches.size();
@@ -339,8 +315,6 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
                                                  input,
                                                  idx);
 
-    //H = estimateRigidTransform(image1, image2, false);
-
     if (!rigid_transform.empty()){
 
       Eigen::AffineCompact2f transform;
@@ -348,17 +322,18 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
       cv2eigen(rigid_transform, transform.matrix());
 
       int num_inliers = 0;
-      for (size_t j = 0; j < input.size(); ++j){
+      for (size_t j = 0; j < matches.size(); ++j){
 
-        Eigen::Vector2f transformed_to_dest = transform * Eigen::Vector2f(input[j].pt.x, input[j].pt.y);
+        Eigen::Vector2f transformed_to_dest = transform * Eigen::Vector2f(input[matches[j].queryIdx].pt.x,
+                                                                          input[matches[j].queryIdx].pt.y);
 
-        float dist = (transformed_to_dest - Eigen::Vector2f(dest[j].pt.x, dest[j].pt.y)).norm();
+        float dist_squared = (transformed_to_dest - Eigen::Vector2f(dest[matches[j].trainIdx].pt.x,
+                                                                    dest[matches[j].trainIdx].pt.y)).squaredNorm();
 
-        if (dist < 16 ){
+        if (dist_squared < inlier_dist_threshold_squared ){
           ++num_inliers;
         }
       }
-      //std::cout << "num_inliers: " << num_inliers << "\n";
 
       if (num_inliers > max_num_inliers){
         max_num_inliers = num_inliers;
@@ -366,13 +341,6 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
       }
     }
 
-    /*
-    if (!rigid_transform.empty()){
-      found_solution = true;
-    }else{
-      //std::cout << "Didn't find solution!\n";
-    }
-    */
     ++num_iterations;
   }
 
@@ -391,11 +359,13 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
   int num_inliers = 0;
   for (size_t j = 0; j < input.size(); ++j){
 
-    Eigen::Vector2f transformed_to_dest = transform * Eigen::Vector2f(input[j].pt.x, input[j].pt.y);
+    Eigen::Vector2f transformed_to_dest = transform * Eigen::Vector2f(input[matches[j].queryIdx].pt.x,
+                                                                      input[matches[j].queryIdx].pt.y);
 
-    float dist = (transformed_to_dest - Eigen::Vector2f(dest[j].pt.x, dest[j].pt.y)).norm();
+    float dist_squared = (transformed_to_dest - Eigen::Vector2f(dest[matches[j].trainIdx].pt.x,
+                                                                dest[matches[j].trainIdx].pt.y)).squaredNorm();
 
-    if (dist < 16 ){
+    if (dist_squared < inlier_dist_threshold_squared){
       ++num_inliers;
       input_inliers.push_back(input[j].pt);
       dest_inliers.push_back(dest[j].pt);
