@@ -17,7 +17,13 @@ public:
   Mat get_debug();
   Mat get_stitch();
 
+  void printDebugOutput();
+
   Mat H; // transformation matrix
+  double rot_deg,rot_rad,transx,transy,scalex,scaley;
+
+protected:
+
   Mat image1, image2,
       dscv1, dscv2;
   bool is_valid;
@@ -28,7 +34,7 @@ public:
   vector<DMatch>   matches;
   vector<DMatch>   matches_filtered;
 
-  double rot_deg,rot_rad,transx,transy,scalex,scaley;
+
 };
 
 #endif // MAPSTITCH_H

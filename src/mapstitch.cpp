@@ -28,6 +28,18 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
     : is_valid(true)
 {
+  if (img1.empty() ){
+    is_valid = false;
+    std::cout << "img1 is empty, aborting.";
+    return;
+  }
+
+  if (img2.empty() ){
+    is_valid = false;
+    std::cout << "img2 is empty, aborting.";
+    return;
+  }
+
   // load images, TODO: check that they're grayscale
   image1 = img1.clone();
   image2 = img2.clone();
@@ -111,23 +123,31 @@ Mat
 StitchedMap::get_debug()
 {
   Mat out;
+  std::cout << "total matches: " << matches.size() << " filtered matches: " << matches_filtered.size() << std::endl;
   drawKeypoints(image1, kpv1, image1, Scalar(255,0,0));
   drawKeypoints(image2, kpv2, image2, Scalar(255,0,0));
   drawMatches(image1,fil1, image2,fil2, matches_filtered,out,Scalar::all(-1),Scalar::all(-1));
-  std::cout << "total matches: " << matches.size() << " filtered matches: " << matches_filtered.size() << std::endl;
   return out;
 }
 
 Mat // return the stitched maps
 StitchedMap::get_stitch()
 {
+  if (!is_valid){
+    std::cout << "Trying to get stitch despite not being valid, returning empty Mat.\n";
+    Mat empty;
+    return empty;
+  }
+
   // create storage for new image and get transformations
   Mat warped_image(image2.size(), image2.type());
   warpAffine(image2,warped_image,H,warped_image.size(),INTER_NEAREST,BORDER_CONSTANT,205);
 
   Mat merged_image(min(image1.rows,warped_image.rows),min(image1.cols,warped_image.cols),warped_image.type());
 
-  for(size_t i = 0; i < merged_image.size().area(); ++i)
+  int area = merged_image.size().area();
+
+  for(int i = 0; i < area; ++i)
   {
       // if cell is free in both maps
       if(image1.data[i] > 230 && warped_image.data[i] > 230)
@@ -161,6 +181,13 @@ StitchedMap::get_stitch()
   //addWeighted(warped_image,.5,image1,.5,0.0,warped_image);
 
   return merged_image;
+}
+
+void StitchedMap::printDebugOutput()
+{
+  cout << "rotation: "          << rot_deg << endl
+       << "translation (x,y): " << transx << ", " << transy << endl
+       << "matrix: "            << H << endl;
 }
 
 StitchedMap::~StitchedMap() { }

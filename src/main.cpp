@@ -94,15 +94,13 @@ int main(int argc, char** argv)
   }
 
   if (outfile.size() == 0 || verbose) { // generate some output
-    cout << "rotation: "          << map.rot_deg << endl
-         << "translation (x,y): " << map.transx << ", " << map.transy << endl
-         << "matrix: "            << map.H << endl;
+    map.printDebugOutput();
   }
 
   if (verbose) {
-    /*namedWindow("wrap"); imshow("wrap", map.get_stitch());*/ imwrite("stitch.pgm", map.get_stitch());
-    /*namedWindow("debug"); imshow("debug", map.get_debug());*/ imwrite("debug.pgm", map.get_debug());
-
+    namedWindow("wrap"); imshow("wrap", map.get_stitch()); //imwrite("stitch.pgm", map.get_stitch());
+    namedWindow("debug"); imshow("debug", map.get_debug()); //imwrite("debug.pgm", map.get_debug());
+    cv::waitKey(0);
   }
 
   return 0;
