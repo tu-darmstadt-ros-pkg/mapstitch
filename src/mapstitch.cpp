@@ -386,6 +386,11 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
     ++num_iterations;
   }
 
+  if (best_indices_vector.size() == 0){
+    std::cout << "Did not find a ransac best indices vector.\n" ;
+    return Mat();
+  }
+
   rigid_transform = getTransformForThreePoints(matches,
                                                dest,
                                                input,
