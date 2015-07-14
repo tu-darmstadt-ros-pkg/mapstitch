@@ -55,8 +55,8 @@ int main(int argc, char** argv)
                   "", "string",cmd);
   UnlabeledMultiArg<string> multi("fileName", "input file names (first one is pivot element)", false, "file1 and file2", cmd);
 
-  std::string bla;
-  std::cin >> bla;
+  //std::string debug_stop;
+  //std::cin >> debug_stop;
 
   cmd.parse( argc, argv );
 
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 
   if (verbose) {
     if (map.isValid()){
-      namedWindow("wrap"); imshow("wrap", map.get_stitch()); //imwrite("stitch.pgm", map.get_stitch());
+      namedWindow("warp"); imshow("warp", map.get_stitch()); //imwrite("stitch.pgm", map.get_stitch());
     }
 
     namedWindow("debug"); imshow("debug", map.get_debug()); //imwrite("debug.pgm", map.get_debug());

@@ -65,6 +65,7 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   OrbDescriptorExtractor* dexc = new OrbDescriptorExtractor(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
   BFMatcher* dematc = new BFMatcher(NORM_HAMMING, false);
 
+  /*
   RobustMatcher robust_matcher;
 
   robust_matcher.setFeatureDetector(detector);
@@ -80,6 +81,7 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   robust_matcher.robustMatch(image1, matches_robust, keypoints_image1, descriptors_image2);
 
   std::cout << "Robust matches: " << matches_robust.size()<< "\n";
+  */
 
   // 1. extract keypoints
   detector->detect(image1, kpv1);
@@ -320,7 +322,6 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
 
   CvRNG rng( 0xFFFFFFFF );
 
-  //int idx[3];
   std::vector<int> idx;
   idx.resize(3);
 
@@ -331,7 +332,7 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
   int max_num_inliers = -1;
   std::vector<int> best_indices_vector;
 
-  while (num_iterations < 5000){
+  while (num_iterations < 500){
 
     for(int i = 0; i < 3;++i){
       idx[i] = cvRandInt(&rng) % matches.size();
@@ -366,7 +367,7 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
         max_num_inliers = num_inliers;
         best_indices_vector = idx;
 
-        std::cout << "\ninlier: " << max_num_inliers;
+        std::cout << "inlier number increased to: " << max_num_inliers << " during ransac\n";
       }
     }
 
@@ -382,9 +383,6 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
 
   cv2eigen(rigid_transform, transform.matrix());
 
-  //std::vector<cv::Point2f> input_inliers;
-  //std::vector<cv::Point2f> dest_inliers;
-
   int num_inliers = 0;
   for (size_t j = 0; j < matches.size(); ++j){
 
@@ -396,17 +394,21 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
 
     if (dist_squared < inlier_dist_threshold_squared){
       ++num_inliers;
-      input_inliers.push_back(input[j].pt);
-      dest_inliers.push_back(dest[j].pt);
+      input_inliers.push_back(input[matches[j].queryIdx].pt);
+      dest_inliers.push_back(dest[matches[j].trainIdx].pt);
 
     }
   }
 
+  std::cout << "Num inliers for best iter: " << num_inliers << "\n";
+
   Mat best_estimate_transform = estimateRigidTransform(input_inliers, dest_inliers, false);
 
   if (!best_estimate_transform.empty()){
-    std::cout << "inlier rigid transform estimation failed.";
     rigid_transform = best_estimate_transform;
+    std::cout << "Inlier rigid transform estimation successful.\n";
+  }else{
+    std::cout << "Inlier rigid transform estimation failed, using prior best estimate\n";
   }
 
   return rigid_transform;
