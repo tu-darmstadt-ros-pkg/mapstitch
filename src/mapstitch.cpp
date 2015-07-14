@@ -316,7 +316,7 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
                                           const vector<KeyPoint>& input)
 {
 
-  float inlier_dist_threshold = 16.0;
+  float inlier_dist_threshold = 8.0;
 
   float inlier_dist_threshold_squared = inlier_dist_threshold * inlier_dist_threshold;
 
@@ -331,6 +331,20 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
 
   int max_num_inliers = -1;
   std::vector<int> best_indices_vector;
+
+  std::vector<Eigen::Vector2f> input_eigen;
+  input_eigen.resize(input.size());
+  for (size_t i = 0; i < input.size(); ++i){
+    input_eigen[i] = Eigen::Vector2f(input[i].pt.x, input[i].pt.y);
+  }
+
+  std::vector<Eigen::Vector2f> dest_eigen;
+  dest_eigen.resize(dest.size());
+  for (size_t i = 0; i < dest.size(); ++i){
+    dest_eigen[i] = Eigen::Vector2f(dest[i].pt.x, dest[i].pt.y);
+  }
+
+
 
   while (num_iterations < 500){
 
@@ -352,11 +366,9 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
       int num_inliers = 0;
       for (size_t j = 0; j < matches.size(); ++j){
 
-        Eigen::Vector2f transformed_to_dest = transform * Eigen::Vector2f(input[matches[j].queryIdx].pt.x,
-                                                                          input[matches[j].queryIdx].pt.y);
+        Eigen::Vector2f transformed_to_dest = transform * input_eigen[matches[j].queryIdx];
 
-        float dist_squared = (transformed_to_dest - Eigen::Vector2f(dest[matches[j].trainIdx].pt.x,
-                                                                    dest[matches[j].trainIdx].pt.y)).squaredNorm();
+        float dist_squared = (transformed_to_dest - dest_eigen[matches[j].trainIdx]).squaredNorm();
 
         if (dist_squared < inlier_dist_threshold_squared ){
           ++num_inliers;
@@ -386,11 +398,9 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
   int num_inliers = 0;
   for (size_t j = 0; j < matches.size(); ++j){
 
-    Eigen::Vector2f transformed_to_dest = transform * Eigen::Vector2f(input[matches[j].queryIdx].pt.x,
-                                                                      input[matches[j].queryIdx].pt.y);
+    Eigen::Vector2f transformed_to_dest = transform * input_eigen[matches[j].queryIdx];
 
-    float dist_squared = (transformed_to_dest - Eigen::Vector2f(dest[matches[j].trainIdx].pt.x,
-                                                                dest[matches[j].trainIdx].pt.y)).squaredNorm();
+    float dist_squared = (transformed_to_dest - dest_eigen[matches[j].trainIdx]).squaredNorm();
 
     if (dist_squared < inlier_dist_threshold_squared){
       ++num_inliers;
