@@ -65,38 +65,39 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   OrbDescriptorExtractor* dexc = new OrbDescriptorExtractor(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
   BFMatcher* dematc = new BFMatcher(NORM_HAMMING, false);
 
+
+  if (false){
+    RobustMatcher robust_matcher;
+
+    robust_matcher.setFeatureDetector(detector);
+    robust_matcher.setDescriptorExtractor(dexc);
+    robust_matcher.setDescriptorMatcher(dematc);
+
+    robust_matcher.computeKeyPoints(image2, kpv2_t);
+
+    Mat descriptors_image2;
+    robust_matcher.computeDescriptors(image2, kpv2_t, descriptors_image2);
+
+    robust_matcher.robustMatch(image1, matches, kpv1_q, descriptors_image2);
+
+    std::cout << "Robust matches: " << matches_robust.size() << " kpv1 size: " << kpv1_q.size() << " kpv2 size: " << kpv2_t.size() << "\n";
+
+  }else{
+
+    // 1. extract keypoints
+    detector->detect(image1, kpv1_q);
+    detector->detect(image2, kpv2_t);
+
+    // 2. extract descriptors
+    dexc->compute(image1, kpv1_q, dscv1_q);
+    dexc->compute(image2, kpv2_t, dscv2_t);
+
+    // 3. match keypoints
+    dematc->match(dscv1_q, dscv2_t, matches);
+
+    std::cout << "matches size: " << matches.size() << " kpv1 size: " << kpv1_q.size() << " kpv2 size: " << kpv2_t.size() << "\n";
+  }
   /*
-  RobustMatcher robust_matcher;
-
-  robust_matcher.setFeatureDetector(detector);
-  robust_matcher.setDescriptorExtractor(dexc);
-  robust_matcher.setDescriptorMatcher(dematc);
-
-  //vector<KeyPoint> keypoints_image2;
-  robust_matcher.computeKeyPoints(image2, keypoints_image2);
-
-  Mat descriptors_image2;
-  robust_matcher.computeDescriptors(image2, keypoints_image2, descriptors_image2);
-
-  robust_matcher.robustMatch(image1, matches_robust, keypoints_image1, descriptors_image2);
-
-  std::cout << "Robust matches: " << matches_robust.size()<< "\n";
-  */
-
-  // 1. extract keypoints
-  detector->detect(image1, kpv1_q);
-  detector->detect(image2, kpv2_t);
-
-  // 2. extract descriptors
-  dexc->compute(image1, kpv1_q, dscv1_q);
-  dexc->compute(image2, kpv2_t, dscv2_t);
-
-  // 3. match keypoints
-  dematc->match(dscv1_q, dscv2_t, matches);
-
-  std::cout << "matches size: " << matches.size() << " kpv1 size: " << kpv1_q.size() << " kpv2 size: " << kpv2_t.size() << "\n";
-
-
   size_t idx = 0;
 
   float min_dist = std::numeric_limits<float>::max();
@@ -109,8 +110,8 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
     const KeyPoint& a1 = kpv1_q[matches[i].queryIdx];
     const KeyPoint& b1 = kpv2_t[matches[i].trainIdx];
 
-    if (matches[i].distance > 30)
-      continue;
+    //if (matches[i].distance > 30)
+    //  continue;
 
     for (size_t j=0; j<matches.size(); j++) {
 
@@ -120,8 +121,8 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
       const KeyPoint& a2 = kpv1_q[matches[j].queryIdx];
       const KeyPoint& b2 = kpv2_t[matches[j].trainIdx];
 
-      if (matches[j].distance > 30)
-        continue;
+      //if (matches[j].distance > 30)
+      //  continue;
 
       float dist = fabs(norm(a1.pt-a2.pt) - norm(b1.pt-b2.pt));
 
@@ -158,6 +159,9 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
     }
 
   }
+  */
+
+  matches_filtered = matches;
 
   std::cout << "num filtered matches: " << matches_filtered.size() << "\n";
 
@@ -169,9 +173,6 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   else
   {
     H = this->estimateHomographyRansac(matches_filtered, kpv1_q, kpv2_t);
-    //H = this->estimateHomographyRansac(matches, kpv1, kpv2);
-    //H = this->estimateHomographyRansac(matches_robust, keypoints_image2, keypoints_image1);
-
 
     if(H.empty() /*|| H.rows < 3 || H.cols < 3*/)
     {
@@ -348,8 +349,6 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
     dest_q_eigen[i] = Eigen::Vector2f(dest_q[i].pt.x, dest_q[i].pt.y);
   }
 
-
-
   while (num_iterations < 500){
 
     for(int i = 0; i < 3;++i){
@@ -434,6 +433,5 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
 
   return rigid_transform;
 }
-
 
 StitchedMap::~StitchedMap() { }

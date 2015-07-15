@@ -39,7 +39,6 @@ protected:
   bool is_valid;
 
   vector<KeyPoint> kpv1_q,kpv2_t;
-  //vector<KeyPoint> fil1_q, fil2_t;
 
   std::vector<cv::Point2f> input_inliers;
   std::vector<cv::Point2f> dest_inliers;
