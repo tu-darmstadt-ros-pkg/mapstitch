@@ -84,17 +84,17 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   */
 
   // 1. extract keypoints
-  detector->detect(image1, kpv1);
-  detector->detect(image2, kpv2);
+  detector->detect(image1, kpv1_q);
+  detector->detect(image2, kpv2_t);
 
   // 2. extract descriptors
-  dexc->compute(image1, kpv1, dscv1);
-  dexc->compute(image2, kpv2, dscv2);
+  dexc->compute(image1, kpv1_q, dscv1_q);
+  dexc->compute(image2, kpv2_t, dscv2_t);
 
   // 3. match keypoints
-  dematc->match(dscv1, dscv2, matches);
+  dematc->match(dscv1_q, dscv2_t, matches);
 
-  std::cout << "kpv1 size: " << kpv1.size() << " kpv2 size: " << kpv2.size() << "\n";
+  std::cout << "matches size: " << matches.size() << " kpv1 size: " << kpv1_q.size() << " kpv2 size: " << kpv2_t.size() << "\n";
 
 
   size_t idx = 0;
@@ -106,8 +106,8 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
 
   // 4. find matching point pairs with same distance in both images
   for (size_t i=0; i<matches.size(); i++) {
-    KeyPoint a1 = kpv1[matches[i].queryIdx],
-             b1 = kpv2[matches[i].trainIdx];
+    const KeyPoint& a1 = kpv1_q[matches[i].queryIdx];
+    const KeyPoint& b1 = kpv2_t[matches[i].trainIdx];
 
     if (matches[i].distance > 30)
       continue;
@@ -117,8 +117,8 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
       if (i == j)
         continue;
 
-      KeyPoint a2 = kpv1[matches[j].queryIdx],
-               b2 = kpv2[matches[j].trainIdx];
+      const KeyPoint& a2 = kpv1_q[matches[j].queryIdx];
+      const KeyPoint& b2 = kpv2_t[matches[j].trainIdx];
 
       if (matches[j].distance > 30)
         continue;
@@ -136,17 +136,17 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
 
     if(good_count > 0){
 
-      matches_filtered.push_back(matches[min_index]);
-      matches_filtered.back().queryIdx = idx;
-      matches_filtered.back().trainIdx = idx;
+      matches_filtered.push_back(matches[i]);
+      //matches_filtered.back().queryIdx = idx;
+      //matches_filtered.back().trainIdx = idx;
 
-      coord1.push_back(a1.pt);
+      //coord1.push_back(a1.pt);
       //coord1.push_back(a2.pt);
-      coord2.push_back(b1.pt);
+      //coord2.push_back(b1.pt);
       //coord2.push_back(b2.pt);
 
-      fil1.push_back(a1);
-      fil2.push_back(b1);
+      //fil1.push_back(a1);
+      //fil2.push_back(b1);
 
       //std::cout << "mf: " << matches_filtered.back().queryIdx << " " << matches_filtered.back().trainIdx << "\n";
       //std::cout << "a1: " << a1.pt.x << " " << a1.pt.y << "\n";
@@ -161,13 +161,14 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
 
   std::cout << "num filtered matches: " << matches_filtered.size() << "\n";
 
-  if (coord1.empty() || coord2.empty())
+  if (matches_filtered.size() < 3)
   {
+    std::cout << "Too low number of matches, cannot proceed with RANSAC!\n";
     is_valid = false;
   }
   else
   {
-    H = this->estimateHomographyRansac(matches_filtered, fil1, fil2);
+    H = this->estimateHomographyRansac(matches_filtered, kpv1_q, kpv2_t);
     //H = this->estimateHomographyRansac(matches, kpv1, kpv2);
     //H = this->estimateHomographyRansac(matches_robust, keypoints_image2, keypoints_image1);
 
@@ -196,14 +197,17 @@ StitchedMap::get_debug()
 {
   Mat out;
   std::cout << "total matches: " << matches.size() << " filtered matches: " << matches_filtered.size() << std::endl;
-  std::cout << "fil1 size: " << fil1.size() << " fil2 size: " << fil2.size() << "\n";
-  drawKeypoints(image1, kpv1, image1, Scalar(255,0,0));
-  drawKeypoints(image2, kpv2, image2, Scalar(255,0,0));
+  //std::cout << "fil1 size: " << fil1_q.size() << " fil2 size: " << fil2_t.size() << "\n";
+  drawKeypoints(image1, kpv1_q, image1, Scalar(255,0,0));
+  drawKeypoints(image2, kpv2_t, image2, Scalar(255,0,0));
 
+  /*
   for (size_t i = 0; i <coord1.size();++i){
     cv::circle(image1, coord1[i], 7, cv::Scalar(0,0 ,255));
     cv::circle(image2, coord2[i], 7, cv::Scalar(0,0 ,255));
   }
+  */
+
 
   for (size_t i = 0; i <input_inliers.size();++i){
     cv::circle(image1, dest_inliers[i], 9, cv::Scalar(255, 0 ,255), 2);
@@ -212,7 +216,7 @@ StitchedMap::get_debug()
 
 
   if (this->is_valid){
-    drawMatches(image1,fil1, image2,fil2, matches_filtered,out,Scalar::all(-1),Scalar::all(-1));
+    drawMatches(image1,kpv1_q , image2, kpv2_t, matches_filtered,out,Scalar::all(-1),Scalar::all(-1));
   }else{
     /*
     Mat img_matches = Mat(image1.cols+image2.cols,image1.rows,image1.type());//set size as combination of img1 and img2
@@ -296,24 +300,24 @@ bool StitchedMap::isValid()
 
 
 Mat StitchedMap::getTransformForThreePoints(const vector<DMatch>& matches,
-                               const vector<KeyPoint>& dest,
-                               const vector<KeyPoint>& input,
+                               const vector<KeyPoint>& dest_q,
+                               const vector<KeyPoint>& input_t,
                                const vector<int>& indices)
 {
-  std::vector<cv::Point2f> input_ransac;
-  std::vector<cv::Point2f> dest_ransac;
+  std::vector<cv::Point2f> input_t_ransac;
+  std::vector<cv::Point2f> dest_q_ransac;
 
   for(int i = 0; i < 3;++i){
-    input_ransac.push_back(input[matches[indices[i]].queryIdx].pt);
-    dest_ransac.push_back(dest[matches[indices[i]].trainIdx].pt);
+    input_t_ransac.push_back(input_t[matches[indices[i]].trainIdx].pt);
+    dest_q_ransac.push_back(dest_q[matches[indices[i]].queryIdx].pt);
   }
 
-  return estimateRigidTransform(input_ransac, dest_ransac, false);
+  return estimateRigidTransform(input_t_ransac, dest_q_ransac, false);
 }
 
 Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
-                                          const vector<KeyPoint>& dest,
-                                          const vector<KeyPoint>& input)
+                                          const vector<KeyPoint>& dest_q,
+                                          const vector<KeyPoint>& input_t)
 {
 
   float inlier_dist_threshold = 8.0;
@@ -332,16 +336,16 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
   int max_num_inliers = -1;
   std::vector<int> best_indices_vector;
 
-  std::vector<Eigen::Vector2f> input_eigen;
-  input_eigen.resize(input.size());
-  for (size_t i = 0; i < input.size(); ++i){
-    input_eigen[i] = Eigen::Vector2f(input[i].pt.x, input[i].pt.y);
+  std::vector<Eigen::Vector2f> input_t_eigen;
+  input_t_eigen.resize(input_t.size());
+  for (size_t i = 0; i < input_t.size(); ++i){
+    input_t_eigen[i] = Eigen::Vector2f(input_t[i].pt.x, input_t[i].pt.y);
   }
 
-  std::vector<Eigen::Vector2f> dest_eigen;
-  dest_eigen.resize(dest.size());
-  for (size_t i = 0; i < dest.size(); ++i){
-    dest_eigen[i] = Eigen::Vector2f(dest[i].pt.x, dest[i].pt.y);
+  std::vector<Eigen::Vector2f> dest_q_eigen;
+  dest_q_eigen.resize(dest_q.size());
+  for (size_t i = 0; i < dest_q.size(); ++i){
+    dest_q_eigen[i] = Eigen::Vector2f(dest_q[i].pt.x, dest_q[i].pt.y);
   }
 
 
@@ -353,8 +357,8 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
     }
 
     rigid_transform = getTransformForThreePoints(matches,
-                                                 dest,
-                                                 input,
+                                                 dest_q,
+                                                 input_t,
                                                  idx);
 
     if (!rigid_transform.empty()){
@@ -366,9 +370,11 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
       int num_inliers = 0;
       for (size_t j = 0; j < matches.size(); ++j){
 
-        Eigen::Vector2f transformed_to_dest = transform * input_eigen[matches[j].queryIdx];
+        //Eigen::Vector2f transformed_to_dest = transform * input_t_eigen[matches[j].trainIdx];
+        //float dist_squared = (transformed_to_dest - dest_q_eigen[matches[j].queryIdx]).squaredNorm();
 
-        float dist_squared = (transformed_to_dest - dest_eigen[matches[j].trainIdx]).squaredNorm();
+        float dist_squared = (transform * input_t_eigen[matches[j].trainIdx] -
+                              dest_q_eigen[matches[j].queryIdx]).squaredNorm();
 
         if (dist_squared < inlier_dist_threshold_squared ){
           ++num_inliers;
@@ -392,8 +398,8 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
   }
 
   rigid_transform = getTransformForThreePoints(matches,
-                                               dest,
-                                               input,
+                                               dest_q,
+                                               input_t,
                                                best_indices_vector);
 
   Eigen::AffineCompact2f transform;
@@ -403,14 +409,14 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
   int num_inliers = 0;
   for (size_t j = 0; j < matches.size(); ++j){
 
-    Eigen::Vector2f transformed_to_dest = transform * input_eigen[matches[j].queryIdx];
+    Eigen::Vector2f transformed_to_dest = transform * input_t_eigen[matches[j].trainIdx];
 
-    float dist_squared = (transformed_to_dest - dest_eigen[matches[j].trainIdx]).squaredNorm();
+    float dist_squared = (transformed_to_dest - dest_q_eigen[matches[j].queryIdx]).squaredNorm();
 
     if (dist_squared < inlier_dist_threshold_squared){
       ++num_inliers;
-      input_inliers.push_back(input[matches[j].queryIdx].pt);
-      dest_inliers.push_back(dest[matches[j].trainIdx].pt);
+      input_inliers.push_back(input_t[matches[j].trainIdx].pt);
+      dest_inliers.push_back(dest_q[matches[j].queryIdx].pt);
 
     }
   }

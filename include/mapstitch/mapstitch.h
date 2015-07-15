@@ -35,17 +35,15 @@ public:
 protected:
 
   Mat image1, image2,
-      dscv1, dscv2;
+      dscv1_q, dscv2_t;
   bool is_valid;
 
-  vector<KeyPoint> kpv1,kpv2;
-  vector<KeyPoint> keypoints_image1, keypoints_image2;
-  vector<KeyPoint> fil1,fil2;
+  vector<KeyPoint> kpv1_q,kpv2_t;
+  //vector<KeyPoint> fil1_q, fil2_t;
 
   std::vector<cv::Point2f> input_inliers;
   std::vector<cv::Point2f> dest_inliers;
 
-  vector<Point2f>  coord1,coord2;
   vector<DMatch>   matches;
   vector<DMatch>   matches_robust;
   vector<DMatch>   matches_filtered;
