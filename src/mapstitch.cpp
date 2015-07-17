@@ -291,6 +291,7 @@ void StitchedMap::printDebugOutput()
 {
   cout << "rotation: "          << rot_deg << endl
        << "translation (x,y): " << transx << ", " << transy << endl
+       << "scale (x,y): "       << scalex << ", " << scaley << endl
        << "matrix: "            << H << endl;
 }
 
@@ -308,12 +309,26 @@ Mat StitchedMap::getTransformForThreePoints(const vector<DMatch>& matches,
   std::vector<cv::Point2f> input_t_ransac;
   std::vector<cv::Point2f> dest_q_ransac;
 
-  for(int i = 0; i < 3;++i){
+  for(int i = 0; i < 3; ++i){
     input_t_ransac.push_back(input_t[matches[indices[i]].trainIdx].pt);
     dest_q_ransac.push_back(dest_q[matches[indices[i]].queryIdx].pt);
   }
 
   return estimateRigidTransform(input_t_ransac, dest_q_ransac, false);
+}
+
+bool StitchedMap::isScaleValid(const cv::Mat& rigid_transform, double threshold_epsilon)
+{
+  double scalex   = sqrt(pow(rigid_transform.at<double>(0,0),2)+pow(rigid_transform.at<double>(0,1),2));
+  double scaley   = sqrt(pow(rigid_transform.at<double>(1,0),2)+pow(rigid_transform.at<double>(1,1),2));
+
+  if ((scalex < 1.0 - threshold_epsilon || scalex > 1.0 + threshold_epsilon) ||
+      (scaley < 1.0 - threshold_epsilon || scaley > 1.0 + threshold_epsilon) )
+  {
+    return false;
+  }
+
+  return true;
 }
 
 Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
@@ -349,7 +364,7 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
     dest_q_eigen[i] = Eigen::Vector2f(dest_q[i].pt.x, dest_q[i].pt.y);
   }
 
-  while (num_iterations < 500){
+  while (num_iterations < 1000){
 
     for(int i = 0; i < 3;++i){
       idx[i] = cvRandInt(&rng) % matches.size();
@@ -360,7 +375,7 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
                                                  input_t,
                                                  idx);
 
-    if (!rigid_transform.empty()){
+    if (!rigid_transform.empty() && isScaleValid(rigid_transform, 0.1)){
 
       Eigen::AffineCompact2f transform;
 
