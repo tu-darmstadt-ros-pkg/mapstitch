@@ -65,7 +65,6 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   OrbDescriptorExtractor* dexc = new OrbDescriptorExtractor(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
   BFMatcher* dematc = new BFMatcher(NORM_HAMMING, false);
 
-
   if (false){
     RobustMatcher robust_matcher;
 
@@ -364,7 +363,7 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
     dest_q_eigen[i] = Eigen::Vector2f(dest_q[i].pt.x, dest_q[i].pt.y);
   }
 
-  while (num_iterations < 1000){
+  while (num_iterations < 3000){
 
     for(int i = 0; i < 3;++i){
       idx[i] = cvRandInt(&rng) % matches.size();
