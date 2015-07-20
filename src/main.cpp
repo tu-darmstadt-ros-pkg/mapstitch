@@ -27,7 +27,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <algorithm>
 #include <opencv/highgui.h>
 #include "tclap/CmdLine.h"
-#include "mapstitch/mapstitch.h"
+#include "hector_mapstitch/mapstitch.h"
 
 using namespace TCLAP;
 using namespace std;
@@ -54,6 +54,9 @@ int main(int argc, char** argv)
   ValueArg<string> outputFOpt("o","outfile","output filename", false,
                   "", "string",cmd);
   UnlabeledMultiArg<string> multi("fileName", "input file names (first one is pivot element)", false, "file1 and file2", cmd);
+
+  //std::string debug_stop;
+  //std::cin >> debug_stop;
 
   cmd.parse( argc, argv );
 
@@ -89,22 +92,21 @@ int main(int argc, char** argv)
   StitchedMap map(images[0],images[1], max_distance);
 
   // write to outfile if applicable
-  if (outfile.size() != 0) {
+  if (outfile.size() != 0 && map.isValid()) {
     imwrite(outfile, map.get_stitch());
   }
 
   if (outfile.size() == 0 || verbose) { // generate some output
-    cout << "rotation: "          << map.rotation << endl
-         << "translation (x,y): " << map.transx << ", " << map.transy << endl
-         << "matrix: "            << map.H << endl;
+    map.printDebugOutput();
   }
 
   if (verbose) {
-    namedWindow("wrap"); imshow("wrap", map.get_stitch()); imwrite("stitch.pgm", map.get_stitch());
-    namedWindow("debug"); imshow("debug", map.get_debug()); imwrite("debug.pgm", map.get_debug());
+    if (map.isValid()){
+      namedWindow("warp"); imshow("warp", map.get_stitch()); //imwrite("stitch.pgm", map.get_stitch());
+    }
 
-    while ((waitKey(0)&255) != 10) // RETURN
-      ;
+    namedWindow("debug"); imshow("debug", map.get_debug()); //imwrite("debug.pgm", map.get_debug());
+    cv::waitKey(0);
   }
 
   return 0;

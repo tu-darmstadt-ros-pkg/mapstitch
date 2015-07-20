@@ -1,4 +1,4 @@
-#include "mapstitch/utils.h"
+#include "hector_mapstitch/utils.h"
 
 #include <ros/ros.h>
 

@@ -25,7 +25,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "nav_msgs/OccupancyGrid.h"
-#include "mapstitch/mapstitch.h"
+#include "hector_mapstitch/mapstitch.h"
 #include <tf/transform_broadcaster.h>
 #include <opencv/highgui.h>
 #include <unistd.h>
@@ -107,7 +107,7 @@ void update_tf(struct stitch_maps *w, struct stitch_maps *m)
   StitchedMap c(w->asimage,m->asimage, max_distance);
 
   // sanity checks
-  if ((c.rotation == 0. && (int) c.transx == 0 && (int) c.transy == 0) ||
+  if ((c.rot_deg == 0. && (int) c.transx == 0 && (int) c.transy == 0) ||
       (int) c.transx == INT_MAX || (int) c.transx == INT_MIN ||
       (int) c.transy == INT_MAX || (int) c.transy == INT_MIN)
   {
