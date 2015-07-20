@@ -17,16 +17,39 @@ public:
   Mat get_debug();
   Mat get_stitch();
 
+  void printDebugOutput();
+  bool isValid();
+
+  Mat getTransformForThreePoints(const vector<DMatch>& matches,
+                                 const vector<KeyPoint>& dest,
+                                 const vector<KeyPoint>& input,
+                                 const vector<int>& indices);
+
+  bool isScaleValid(const cv::Mat& rigid_transform, double threshold_epsilon);
+
+  Mat estimateHomographyRansac(const vector<DMatch>& matches,
+                               const vector<KeyPoint>& dest,
+                               const vector<KeyPoint>& input);
+
+
   Mat H; // transformation matrix
+  double rot_deg,rot_rad,transx,transy,scalex,scaley;
+
+protected:
+
   Mat image1, image2,
-      dscv1, dscv2;
+      dscv1_q, dscv2_t;
+  bool is_valid;
 
-  vector<KeyPoint> kpv1,kpv2;
-  vector<KeyPoint> fil1,fil2;
-  vector<Point2f>  coord1,coord2;
+  vector<KeyPoint> kpv1_q,kpv2_t;
+
+  std::vector<cv::Point2f> input_inliers;
+  std::vector<cv::Point2f> dest_inliers;
+
   vector<DMatch>   matches;
+  vector<DMatch>   matches_robust;
+  vector<DMatch>   matches_filtered;
 
-  double rotation,transx,transy,scalex,scaley;
 };
 
 #endif // MAPSTITCH_H
