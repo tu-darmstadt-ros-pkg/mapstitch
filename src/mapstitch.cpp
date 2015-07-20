@@ -25,427 +25,94 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mapstitch/mapstitch.h"
 #include "math.h"
 
-#include <Eigen/Core>
-#include <Eigen/Geometry>
-
-#include <opencv2/core/eigen.hpp>
-
-#include <robust_matcher/robust_matcher.h>
-
 StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
-    : is_valid(true)
 {
-  if (img1.empty() ){
-    is_valid = false;
-    std::cout << "img1 is empty, aborting.";
-    return;
-  }
-
-  if (img2.empty() ){
-    is_valid = false;
-    std::cout << "img2 is empty, aborting.";
-    return;
-  }
-
   // load images, TODO: check that they're grayscale
   image1 = img1.clone();
   image2 = img2.clone();
 
-  int nfeatures = 500;
-  float scaleFactor = 1.2f;
-  int nlevels=8;
-  int edgeThreshold = 31;
-  int firstLevel = 0;
-  int WTA_K=2;
-  int scoreType=ORB::HARRIS_SCORE;
-  int patchSize=31;
-
   // create feature detector set.
-  OrbFeatureDetector* detector = new OrbFeatureDetector(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
-  OrbDescriptorExtractor* dexc = new OrbDescriptorExtractor(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
-  BFMatcher* dematc = new BFMatcher(NORM_HAMMING, false);
+  OrbFeatureDetector detector;
+  OrbDescriptorExtractor dexc;
+  BFMatcher dematc(NORM_HAMMING, false);
 
-  if (false){
-    RobustMatcher robust_matcher;
+  // 1. extract keypoints
+  detector.detect(image1, kpv1);
+  detector.detect(image2, kpv2);
 
-    robust_matcher.setFeatureDetector(detector);
-    robust_matcher.setDescriptorExtractor(dexc);
-    robust_matcher.setDescriptorMatcher(dematc);
+  // 2. extract descriptors
+  dexc.compute(image1, kpv1, dscv1);
+  dexc.compute(image2, kpv2, dscv2);
 
-    robust_matcher.computeKeyPoints(image2, kpv2_t);
-
-    Mat descriptors_image2;
-    robust_matcher.computeDescriptors(image2, kpv2_t, descriptors_image2);
-
-    robust_matcher.robustMatch(image1, matches, kpv1_q, descriptors_image2);
-
-    std::cout << "Robust matches: " << matches_robust.size() << " kpv1 size: " << kpv1_q.size() << " kpv2 size: " << kpv2_t.size() << "\n";
-
-  }else{
-
-    // 1. extract keypoints
-    detector->detect(image1, kpv1_q);
-    detector->detect(image2, kpv2_t);
-
-    // 2. extract descriptors
-    dexc->compute(image1, kpv1_q, dscv1_q);
-    dexc->compute(image2, kpv2_t, dscv2_t);
-
-    // 3. match keypoints
-    dematc->match(dscv1_q, dscv2_t, matches);
-
-    std::cout << "matches size: " << matches.size() << " kpv1 size: " << kpv1_q.size() << " kpv2 size: " << kpv2_t.size() << "\n";
-  }
-  /*
-  size_t idx = 0;
-
-  float min_dist = std::numeric_limits<float>::max();
-  int min_index = -1;
-
-  int good_count = 0;
+  // 3. match keypoints
+  dematc.match(dscv1, dscv2, matches);
 
   // 4. find matching point pairs with same distance in both images
   for (size_t i=0; i<matches.size(); i++) {
-    const KeyPoint& a1 = kpv1_q[matches[i].queryIdx];
-    const KeyPoint& b1 = kpv2_t[matches[i].trainIdx];
+    KeyPoint a1 = kpv1[matches[i].queryIdx],
+             b1 = kpv2[matches[i].trainIdx];
 
-    //if (matches[i].distance > 30)
-    //  continue;
+    if (matches[i].distance > 30)
+      continue;
 
     for (size_t j=0; j<matches.size(); j++) {
+      KeyPoint a2 = kpv1[matches[j].queryIdx],
+               b2 = kpv2[matches[j].trainIdx];
 
-      if (i == j)
+      if (matches[j].distance > 30)
         continue;
 
-      const KeyPoint& a2 = kpv1_q[matches[j].queryIdx];
-      const KeyPoint& b2 = kpv2_t[matches[j].trainIdx];
+      if ( fabs(norm(a1.pt-a2.pt) - norm(b1.pt-b2.pt)) > max_pairwise_distance ||
+           fabs(norm(a1.pt-a2.pt) - norm(b1.pt-b2.pt)) == 0)
+        continue;
 
-      //if (matches[j].distance > 30)
-      //  continue;
+      coord1.push_back(a1.pt);
+      coord1.push_back(a2.pt);
+      coord2.push_back(b1.pt);
+      coord2.push_back(b2.pt);
 
-      float dist = fabs(norm(a1.pt-a2.pt) - norm(b1.pt-b2.pt));
-
-      if ( dist < max_pairwise_distance){
-        good_count++;
-        if (dist < min_dist){
-          min_dist = dist;
-          min_index = j;
-        }
-      }
+      fil1.push_back(a1);
+      fil1.push_back(a2);
+      fil2.push_back(b1);
+      fil2.push_back(b2);
     }
-
-    if(good_count > 0){
-
-      matches_filtered.push_back(matches[i]);
-      //matches_filtered.back().queryIdx = idx;
-      //matches_filtered.back().trainIdx = idx;
-
-      //coord1.push_back(a1.pt);
-      //coord1.push_back(a2.pt);
-      //coord2.push_back(b1.pt);
-      //coord2.push_back(b2.pt);
-
-      //fil1.push_back(a1);
-      //fil2.push_back(b1);
-
-      //std::cout << "mf: " << matches_filtered.back().queryIdx << " " << matches_filtered.back().trainIdx << "\n";
-      //std::cout << "a1: " << a1.pt.x << " " << a1.pt.y << "\n";
-      //std::cout << "b1: " << b1.pt.x << " " << b1.pt.y << "\n";
-      //std::cout << "a2: " << a2.pt.x << " " << a2.pt.y << "\n";
-      //std::cout << "b2: " << b2.pt.x << " " << b2.pt.y << "\n";
-
-      ++idx;
-    }
-
   }
-  */
 
-  matches_filtered = matches;
+  if (coord1.size() == 0)
+    ;
 
-  std::cout << "num filtered matches: " << matches_filtered.size() << "\n";
+  // 5. find homography
+  H = estimateRigidTransform(coord2, coord1, false);
 
-  if (matches_filtered.size() < 3)
-  {
-    std::cout << "Too low number of matches, cannot proceed with RANSAC!\n";
-    is_valid = false;
-  }
-  else
-  {
-    H = this->estimateHomographyRansac(matches_filtered, kpv1_q, kpv2_t);
-
-    if(H.empty() /*|| H.rows < 3 || H.cols < 3*/)
-    {
-      std::cout << "H Matrix empty\n";
-      is_valid = false;
-    }
-    else
-    {
-      // 6. calculate this stuff for information
-      rot_rad  = atan2(H.at<double>(0,1),H.at<double>(1,1));
-      rot_deg  = 180./M_PI* rot_rad;
-      transx   = H.at<double>(0,2);
-      transy   = H.at<double>(1,2);
-      scalex   = sqrt(pow(H.at<double>(0,0),2)+pow(H.at<double>(0,1),2));
-      scaley   = sqrt(pow(H.at<double>(1,0),2)+pow(H.at<double>(1,1),2));
-    }
-
-  }
+  // 6. calculate this stuff for information
+  rotation = 180./M_PI*atan2(H.at<double>(0,1),H.at<double>(1,1)),
+  transx   = H.at<double>(0,2),
+  transy   = H.at<double>(1,2);
+  scalex   = sqrt(pow(H.at<double>(0,0),2)+pow(H.at<double>(0,1),2));
+  scaley   = sqrt(pow(H.at<double>(1,0),2)+pow(H.at<double>(1,1),2));
 }
 
 Mat
 StitchedMap::get_debug()
 {
   Mat out;
-  std::cout << "total matches: " << matches.size() << " filtered matches: " << matches_filtered.size() << std::endl;
-  //std::cout << "fil1 size: " << fil1_q.size() << " fil2 size: " << fil2_t.size() << "\n";
-  drawKeypoints(image1, kpv1_q, image1, Scalar(255,0,0));
-  drawKeypoints(image2, kpv2_t, image2, Scalar(255,0,0));
-
-  /*
-  for (size_t i = 0; i <coord1.size();++i){
-    cv::circle(image1, coord1[i], 7, cv::Scalar(0,0 ,255));
-    cv::circle(image2, coord2[i], 7, cv::Scalar(0,0 ,255));
-  }
-  */
-
-
-  for (size_t i = 0; i <input_inliers.size();++i){
-    cv::circle(image1, dest_inliers[i], 9, cv::Scalar(255, 0 ,255), 2);
-    cv::circle(image2, input_inliers[i], 9, cv::Scalar(255, 0 ,255), 2);
-  }
-
-
-  if (this->is_valid){
-    drawMatches(image1,kpv1_q , image2, kpv2_t, matches_filtered,out,Scalar::all(-1),Scalar::all(-1));
-  }else{
-    /*
-    Mat img_matches = Mat(image1.cols+image2.cols,image1.rows,image1.type());//set size as combination of img1 and img2
-
-
-    Mat left(img_matches, Rect(0, 0, image1.cols, image1.rows)); // Copy constructor
-    image1.copyTo(left);
-    Mat right(img_matches, Rect(image1.cols, 0, image1.cols, image1.rows)); // Copy constructor
-    image2.copyTo(right);
-    */
-
-    out = image1;
-  }
+  drawKeypoints(image1, kpv1, image1, Scalar(255,0,0));
+  drawKeypoints(image2, kpv2, image2, Scalar(255,0,0));
+  drawMatches(image1,fil1, image2,fil2, matches,out,Scalar::all(-1),Scalar::all(-1));
   return out;
 }
 
 Mat // return the stitched maps
 StitchedMap::get_stitch()
 {
-  if (!is_valid){
-    std::cout << "Trying to get stitch despite not being valid, returning empty Mat.\n";
-    Mat empty;
-    return empty;
-  }
-
   // create storage for new image and get transformations
-  Mat warped_image(image2.size(), image2.type());
-  warpAffine(image2,warped_image,H,warped_image.size(),INTER_NEAREST,BORDER_CONSTANT,205);
-
-  Mat merged_image(min(image1.rows,warped_image.rows),min(image1.cols,warped_image.cols),warped_image.type());
-
-  int area = merged_image.size().area();
-
-  for(int i = 0; i < area; ++i)
-  {
-      // if cell is free in both maps
-      if(image1.data[i] > 230 && warped_image.data[i] > 230)
-      {
-          merged_image.data[i] = 254;
-      }
-      // if cell is occupied in either map
-      else if(image1.data[i] < 10 || warped_image.data[i] < 10)
-      {
-          merged_image.data[i] = 0;
-      }
-      // if cell is unknown in one and known in the other map
-      else if(image1.data[i] > 200 && image1.data[i] < 210
-              && (warped_image.data[i] < 200 || warped_image.data[i] > 210))
-      {
-          merged_image.data[i] = warped_image.data[i];
-      }
-      else if(warped_image.data[i] > 200 && warped_image.data[i] < 210
-              && (image1.data[i] < 200 || image1.data[i] > 210))
-      {
-          merged_image.data[i] = image1.data[i];
-      }
-      // else the cell is unknown
-      else
-      {
-          merged_image.data[i] = 205;
-      }
-  }
+  Mat image(image2.size(), image2.type());
+  warpAffine(image2,image,H,image.size());
 
   // blend image1 onto the transformed image2
-  //addWeighted(warped_image,.5,image1,.5,0.0,warped_image);
+  addWeighted(image,.5,image1,.5,0.0,image);
 
-  return merged_image;
-}
-
-void StitchedMap::printDebugOutput()
-{
-  cout << "rotation: "          << rot_deg << endl
-       << "translation (x,y): " << transx << ", " << transy << endl
-       << "scale (x,y): "       << scalex << ", " << scaley << endl
-       << "matrix: "            << H << endl;
-}
-
-bool StitchedMap::isValid()
-{
-  return is_valid;
-}
-
-
-Mat StitchedMap::getTransformForThreePoints(const vector<DMatch>& matches,
-                               const vector<KeyPoint>& dest_q,
-                               const vector<KeyPoint>& input_t,
-                               const vector<int>& indices)
-{
-  std::vector<cv::Point2f> input_t_ransac;
-  std::vector<cv::Point2f> dest_q_ransac;
-
-  for(int i = 0; i < 3; ++i){
-    input_t_ransac.push_back(input_t[matches[indices[i]].trainIdx].pt);
-    dest_q_ransac.push_back(dest_q[matches[indices[i]].queryIdx].pt);
-  }
-
-  return estimateRigidTransform(input_t_ransac, dest_q_ransac, false);
-}
-
-bool StitchedMap::isScaleValid(const cv::Mat& rigid_transform, double threshold_epsilon)
-{
-  double scalex   = sqrt(pow(rigid_transform.at<double>(0,0),2)+pow(rigid_transform.at<double>(0,1),2));
-  double scaley   = sqrt(pow(rigid_transform.at<double>(1,0),2)+pow(rigid_transform.at<double>(1,1),2));
-
-  if ((scalex < 1.0 - threshold_epsilon || scalex > 1.0 + threshold_epsilon) ||
-      (scaley < 1.0 - threshold_epsilon || scaley > 1.0 + threshold_epsilon) )
-  {
-    return false;
-  }
-
-  return true;
-}
-
-Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
-                                          const vector<KeyPoint>& dest_q,
-                                          const vector<KeyPoint>& input_t)
-{
-
-  float inlier_dist_threshold = 8.0;
-
-  float inlier_dist_threshold_squared = inlier_dist_threshold * inlier_dist_threshold;
-
-  CvRNG rng( 0xFFFFFFFF );
-
-  std::vector<int> idx;
-  idx.resize(3);
-
-  Mat rigid_transform;
-
-  int num_iterations = 0;
-
-  int max_num_inliers = -1;
-  std::vector<int> best_indices_vector;
-
-  std::vector<Eigen::Vector2f> input_t_eigen;
-  input_t_eigen.resize(input_t.size());
-  for (size_t i = 0; i < input_t.size(); ++i){
-    input_t_eigen[i] = Eigen::Vector2f(input_t[i].pt.x, input_t[i].pt.y);
-  }
-
-  std::vector<Eigen::Vector2f> dest_q_eigen;
-  dest_q_eigen.resize(dest_q.size());
-  for (size_t i = 0; i < dest_q.size(); ++i){
-    dest_q_eigen[i] = Eigen::Vector2f(dest_q[i].pt.x, dest_q[i].pt.y);
-  }
-
-  while (num_iterations < 3000){
-
-    for(int i = 0; i < 3;++i){
-      idx[i] = cvRandInt(&rng) % matches.size();
-    }
-
-    rigid_transform = getTransformForThreePoints(matches,
-                                                 dest_q,
-                                                 input_t,
-                                                 idx);
-
-    if (!rigid_transform.empty() && isScaleValid(rigid_transform, 0.1)){
-
-      Eigen::AffineCompact2f transform;
-
-      cv2eigen(rigid_transform, transform.matrix());
-
-      int num_inliers = 0;
-      for (size_t j = 0; j < matches.size(); ++j){
-
-        //Eigen::Vector2f transformed_to_dest = transform * input_t_eigen[matches[j].trainIdx];
-        //float dist_squared = (transformed_to_dest - dest_q_eigen[matches[j].queryIdx]).squaredNorm();
-
-        float dist_squared = (transform * input_t_eigen[matches[j].trainIdx] -
-                              dest_q_eigen[matches[j].queryIdx]).squaredNorm();
-
-        if (dist_squared < inlier_dist_threshold_squared ){
-          ++num_inliers;
-        }
-      }
-
-      if (num_inliers > max_num_inliers){
-        max_num_inliers = num_inliers;
-        best_indices_vector = idx;
-
-        std::cout << "inlier number increased to: " << max_num_inliers << " during ransac\n";
-      }
-    }
-
-    ++num_iterations;
-  }
-
-  if (best_indices_vector.size() == 0){
-    std::cout << "Did not find a ransac best indices vector.\n" ;
-    return Mat();
-  }
-
-  rigid_transform = getTransformForThreePoints(matches,
-                                               dest_q,
-                                               input_t,
-                                               best_indices_vector);
-
-  Eigen::AffineCompact2f transform;
-
-  cv2eigen(rigid_transform, transform.matrix());
-
-  int num_inliers = 0;
-  for (size_t j = 0; j < matches.size(); ++j){
-
-    Eigen::Vector2f transformed_to_dest = transform * input_t_eigen[matches[j].trainIdx];
-
-    float dist_squared = (transformed_to_dest - dest_q_eigen[matches[j].queryIdx]).squaredNorm();
-
-    if (dist_squared < inlier_dist_threshold_squared){
-      ++num_inliers;
-      input_inliers.push_back(input_t[matches[j].trainIdx].pt);
-      dest_inliers.push_back(dest_q[matches[j].queryIdx].pt);
-
-    }
-  }
-
-  std::cout << "Num inliers for best iter: " << num_inliers << "\n";
-
-  Mat best_estimate_transform = estimateRigidTransform(input_inliers, dest_inliers, false);
-
-  if (!best_estimate_transform.empty()){
-    rigid_transform = best_estimate_transform;
-    std::cout << "Inlier rigid transform estimation successful.\n";
-  }else{
-    std::cout << "Inlier rigid transform estimation failed, using prior best estimate\n";
-  }
-
-  return rigid_transform;
+  return image;
 }
 
 StitchedMap::~StitchedMap() { }

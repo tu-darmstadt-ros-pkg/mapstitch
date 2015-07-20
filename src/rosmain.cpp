@@ -107,7 +107,7 @@ void update_tf(struct stitch_maps *w, struct stitch_maps *m)
   StitchedMap c(w->asimage,m->asimage, max_distance);
 
   // sanity checks
-  if ((c.rot_deg == 0. && (int) c.transx == 0 && (int) c.transy == 0) ||
+  if ((c.rotation == 0. && (int) c.transx == 0 && (int) c.transy == 0) ||
       (int) c.transx == INT_MAX || (int) c.transx == INT_MIN ||
       (int) c.transy == INT_MAX || (int) c.transy == INT_MIN)
   {

@@ -55,9 +55,6 @@ int main(int argc, char** argv)
                   "", "string",cmd);
   UnlabeledMultiArg<string> multi("fileName", "input file names (first one is pivot element)", false, "file1 and file2", cmd);
 
-  //std::string debug_stop;
-  //std::cin >> debug_stop;
-
   cmd.parse( argc, argv );
 
   // Get the value parsed by each arg.
@@ -92,21 +89,22 @@ int main(int argc, char** argv)
   StitchedMap map(images[0],images[1], max_distance);
 
   // write to outfile if applicable
-  if (outfile.size() != 0 && map.isValid()) {
+  if (outfile.size() != 0) {
     imwrite(outfile, map.get_stitch());
   }
 
   if (outfile.size() == 0 || verbose) { // generate some output
-    map.printDebugOutput();
+    cout << "rotation: "          << map.rotation << endl
+         << "translation (x,y): " << map.transx << ", " << map.transy << endl
+         << "matrix: "            << map.H << endl;
   }
 
   if (verbose) {
-    if (map.isValid()){
-      namedWindow("warp"); imshow("warp", map.get_stitch()); //imwrite("stitch.pgm", map.get_stitch());
-    }
+    namedWindow("wrap"); imshow("wrap", map.get_stitch()); imwrite("stitch.pgm", map.get_stitch());
+    namedWindow("debug"); imshow("debug", map.get_debug()); imwrite("debug.pgm", map.get_debug());
 
-    namedWindow("debug"); imshow("debug", map.get_debug()); //imwrite("debug.pgm", map.get_debug());
-    cv::waitKey(0);
+    while ((waitKey(0)&255) != 10) // RETURN
+      ;
   }
 
   return 0;
