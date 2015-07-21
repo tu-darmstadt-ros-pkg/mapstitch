@@ -5,6 +5,8 @@
 #include <math.h>
 #include <opencv/cv.h>
 
+#include <boost/shared_ptr.hpp>
+
 using namespace cv;
 using namespace std;
 
@@ -22,15 +24,20 @@ public:
   bool isValid();
 
   Mat getTransformForThreePoints(const vector<DMatch>& matches,
-                                 const vector<KeyPoint>& dest,
-                                 const vector<KeyPoint>& input,
+                                 const vector<KeyPoint>& dest_q,
+                                 const vector<KeyPoint>& input_t,
                                  const vector<int>& indices);
 
   bool isScaleValid(const cv::Mat& rigid_transform, double threshold_epsilon);
 
   Mat estimateHomographyRansac(const vector<DMatch>& matches,
-                               const vector<KeyPoint>& dest,
-                               const vector<KeyPoint>& input);
+                               const vector<KeyPoint>& dest_q,
+                               const vector<KeyPoint>& input_t);
+
+  bool pointSelectionPlausible(const std::vector<int>& indices,
+                               const vector<DMatch>& matches,
+                               const vector<KeyPoint>& dest_q,
+                               const vector<KeyPoint>& input_t);
 
   bool transformPlausible(double origin_dist_threshold,
                           double resolution,
@@ -60,6 +67,9 @@ protected:
   vector<DMatch>   matches_robust;
   vector<DMatch>   matches_filtered;
 
+  boost::shared_ptr<OrbFeatureDetector> detector;
+  boost::shared_ptr<OrbDescriptorExtractor> dexc;
+  boost::shared_ptr<BFMatcher> dematc;
 };
 
 #endif // MAPSTITCH_H

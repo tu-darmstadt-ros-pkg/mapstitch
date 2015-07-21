@@ -61,16 +61,16 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
   int patchSize=31;
 
   // create feature detector set.
-  OrbFeatureDetector* detector = new OrbFeatureDetector(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
-  OrbDescriptorExtractor* dexc = new OrbDescriptorExtractor(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
-  BFMatcher* dematc = new BFMatcher(NORM_HAMMING, false);
+  detector.reset(new OrbFeatureDetector(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize));
+  dexc.reset(new OrbDescriptorExtractor(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize));
+  dematc.reset(new BFMatcher(NORM_HAMMING, false));
 
   if (false){
     RobustMatcher robust_matcher;
 
-    robust_matcher.setFeatureDetector(detector);
-    robust_matcher.setDescriptorExtractor(dexc);
-    robust_matcher.setDescriptorMatcher(dematc);
+    robust_matcher.setFeatureDetector(detector.get());
+    robust_matcher.setDescriptorExtractor(dexc.get());
+    robust_matcher.setDescriptorMatcher(dematc.get());
 
     robust_matcher.computeKeyPoints(image2, kpv2_t);
 
@@ -486,6 +486,27 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
   }
 
   return rigid_transform;
+}
+
+bool StitchedMap::pointSelectionPlausible(const std::vector<int>& indices,
+                             const vector<DMatch>& matches,
+                             const vector<KeyPoint>& dest_q,
+                             const vector<KeyPoint>& input_t)
+{
+  /*
+   * @TODO Make this work correctly for speed-up
+  std::vector<float> input_distances;
+  std::vector<float> dest_distances;
+
+  Eigen::Vector2f
+
+  for (size_t i = 0; indices.size(); ++i)
+  {
+    input_t[matches[indices[i]].trainIdx].pt;
+
+  }
+  */
+  return true;
 }
 
 bool StitchedMap::transformPlausible(double origin_dist_threshold,
