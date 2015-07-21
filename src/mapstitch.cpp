@@ -541,4 +541,32 @@ Mat StitchedMap::estimateHomographyRansac(const vector<DMatch>& matches,
   return rigid_transform;
 }
 
+bool StitchedMap::transformPlausible(double origin_dist_threshold,
+                                     double resolution,
+                                     double origin_x,
+                                     double origin_y)
+{
+  Mat H_tmp  (this->H.clone());
+  Mat E  = (Mat_<double>(3,3) << 1, 0,  origin_x,
+            0, 1,  origin_y,
+            0, 0, 1),
+      E_ = (Mat_<double>(3,3) << 1, 0, -origin_x,
+            0, 1, -origin_y,
+            0, 0, 1);
+  H_tmp.resize(3);
+  H_tmp.at<double>(2,2) = 1.;
+  H_tmp.at<double>(2,0) = H_tmp.at<double>(2,1) = 0.;
+  H_tmp.at<double>(1,2) *= resolution;
+  H_tmp.at<double>(0,2) *= resolution;
+  H_tmp = E*H_tmp*E_;
+
+  double rotation = -1 *atan2(H_tmp.at<double>(0,1),H_tmp.at<double>(1,1)),
+      transx = H_tmp.at<double>(0,2),
+      transy = H_tmp.at<double>(1,2);
+
+  std::cout << "trans x: " << transx << " y: " << transy << " rot: " << rotation << "\n";
+
+  return (Eigen::Vector2d(transx, transy).norm() < origin_dist_threshold);
+}
+
 StitchedMap::~StitchedMap() { }

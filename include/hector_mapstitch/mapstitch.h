@@ -32,6 +32,11 @@ public:
                                const vector<KeyPoint>& dest,
                                const vector<KeyPoint>& input);
 
+  bool transformPlausible(double origin_dist_threshold,
+                          double resolution,
+                          double origin_x,
+                          double origin_y);
+
 
 
   double rot_deg,rot_rad,transx,transy,scalex,scaley;
