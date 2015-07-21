@@ -129,7 +129,9 @@ void update_tf(struct stitch_maps *w, struct stitch_maps *m)
   // point to the edge, apply rotation+translation from opencv and move
   // back to the center.
   float res = m->resolution;
-  Mat H  = c.H;
+
+  Mat H(c.getRigidTransform().clone());
+
   Mat E  = (Mat_<double>(3,3) << 1, 0,  m->origin_x,
                                  0, 1,  m->origin_y,
                                  0, 0, 1),
@@ -147,7 +149,7 @@ void update_tf(struct stitch_maps *w, struct stitch_maps *m)
       transx = H.at<double>(0,2),
       transy = H.at<double>(1,2);
 
-  ROS_INFO("stichted map with rotation %.5f radians and (%f,%f) translation",
+  ROS_INFO("stitched map with rotation %.5f radians and (%f,%f) translation",
       rot,transx,transy);
 
   ourtf = Transform( Quaternion(Vector3(0,0,1), rot),

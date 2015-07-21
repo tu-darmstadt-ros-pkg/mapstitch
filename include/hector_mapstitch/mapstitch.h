@@ -33,10 +33,14 @@ public:
                                const vector<KeyPoint>& input);
 
 
-  Mat H; // transformation matrix
+
   double rot_deg,rot_rad,transx,transy,scalex,scaley;
 
+  const Mat& getRigidTransform() const { return H; };
+
 protected:
+
+  Mat H; // transformation matrix
 
   Mat image1, image2,
       dscv1_q, dscv2_t;

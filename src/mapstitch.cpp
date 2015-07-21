@@ -335,6 +335,8 @@ StitchedMap::get_stitch()
 
   // create storage for new image and get transformations
   Mat warped_image(image2.size(), image2.type());
+
+  std::cout << "\n-----H----\n" << H << "\n";
   warpAffine(image2,warped_image,H,warped_image.size(),INTER_NEAREST,BORDER_CONSTANT,205);
 
   Mat merged_image(min(image1.rows,warped_image.rows),min(image1.cols,warped_image.cols),warped_image.type());
