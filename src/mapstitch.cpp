@@ -166,7 +166,7 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
 
   if (matches_filtered.size() < 3)
   {
-    std::cout << "Too low number of matches, cannot proceed with RANSAC!\n";
+    std::cout << "Too low number of matches, cannot proceed with RANSAC! using last provided homography\n";
     is_valid = false;
   }
   else
@@ -190,6 +190,97 @@ StitchedMap::StitchedMap(Mat &img1, Mat &img2, float max_pairwise_distance)
     }
 
   }
+}
+
+StitchedMap::StitchedMap(Mat &img1, Mat &img2, Mat &H_provided, float max_distance)
+    : is_valid(true)
+{
+  if (img1.empty() ){
+    is_valid = false;
+    std::cout << "img1 is empty, aborting.";
+    return;
+  }
+
+  if (img2.empty() ){
+    is_valid = false;
+    std::cout << "img2 is empty, aborting.";
+    return;
+  }
+
+  // load images, TODO: check that they're grayscale
+  image1 = img1.clone();
+  image2 = img2.clone();
+
+  int nfeatures = 500;
+  float scaleFactor = 1.2f;
+  int nlevels=8;
+  int edgeThreshold = 31;
+  int firstLevel = 0;
+  int WTA_K=2;
+  int scoreType=ORB::HARRIS_SCORE;
+  int patchSize=31;
+
+  // create feature detector set.
+  OrbFeatureDetector* detector = new OrbFeatureDetector(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
+  OrbDescriptorExtractor* dexc = new OrbDescriptorExtractor(nfeatures, scaleFactor, nlevels, edgeThreshold, firstLevel, WTA_K, scoreType, patchSize);
+  BFMatcher* dematc = new BFMatcher(NORM_HAMMING, false);
+
+  if (false){
+    RobustMatcher robust_matcher;
+
+    robust_matcher.setFeatureDetector(detector);
+    robust_matcher.setDescriptorExtractor(dexc);
+    robust_matcher.setDescriptorMatcher(dematc);
+
+    robust_matcher.computeKeyPoints(image2, kpv2_t);
+
+    Mat descriptors_image2;
+    robust_matcher.computeDescriptors(image2, kpv2_t, descriptors_image2);
+
+    robust_matcher.robustMatch(image1, matches, kpv1_q, descriptors_image2);
+
+    std::cout << "Robust matches: " << matches_robust.size() << " kpv1 size: " << kpv1_q.size() << " kpv2 size: " << kpv2_t.size() << "\n";
+
+  }else{
+
+    // 1. extract keypoints
+    detector->detect(image1, kpv1_q);
+    detector->detect(image2, kpv2_t);
+
+    // 2. extract descriptors
+    dexc->compute(image1, kpv1_q, dscv1_q);
+    dexc->compute(image2, kpv2_t, dscv2_t);
+
+    // 3. match keypoints
+    dematc->match(dscv1_q, dscv2_t, matches);
+
+    std::cout << "matches size: " << matches.size() << " kpv1 size: " << kpv1_q.size() << " kpv2 size: " << kpv2_t.size() << "\n";
+  }
+
+  matches_filtered = matches;
+
+  std::cout << "num filtered matches: " << matches_filtered.size() << "\n";
+
+
+    H = H_provided;
+
+    if(H.empty() /*|| H.rows < 3 || H.cols < 3*/)
+    {
+      std::cout << "H Matrix empty\n";
+      is_valid = false;
+    }
+    else
+    {
+      // 6. calculate this stuff for information
+      rot_rad  = atan2(H.at<double>(0,1),H.at<double>(1,1));
+      rot_deg  = 180./M_PI* rot_rad;
+      transx   = H.at<double>(0,2);
+      transy   = H.at<double>(1,2);
+      scalex   = sqrt(pow(H.at<double>(0,0),2)+pow(H.at<double>(0,1),2));
+      scaley   = sqrt(pow(H.at<double>(1,0),2)+pow(H.at<double>(1,1),2));
+    }
+
+
 }
 
 Mat

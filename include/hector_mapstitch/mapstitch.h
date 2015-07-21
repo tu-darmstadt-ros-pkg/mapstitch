@@ -12,6 +12,7 @@ class StitchedMap
 {
 public:
   StitchedMap(Mat &im1, Mat &im2, float max_distance=5.);
+  StitchedMap(Mat &img1, Mat &img2,cv::Mat &H_provided, float max_distance=5. );
   ~StitchedMap();
 
   Mat get_debug();
