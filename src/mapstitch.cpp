@@ -254,7 +254,14 @@ StitchedMap::get_debug()
 
 
   if (this->is_valid){
-    drawMatches(image1,kpv1_q , image2, kpv2_t, matches_filtered,out,Scalar::all(-1),Scalar::all(-1));
+    
+    vector<DMatch>   matches_empty;
+    
+    drawMatches(image1,kpv1_q , image2, kpv2_t, matches_empty,out,Scalar::all(-1),Scalar::all(-1));
+    
+    //drawMatches(image1,kpv1_q , image2, kpv2_t, matches_filtered,out,Scalar::all(-1),Scalar::all(-1));
+    
+    
   }else{
     /*
     Mat img_matches = Mat(image1.cols+image2.cols,image1.rows,image1.type());//set size as combination of img1 and img2

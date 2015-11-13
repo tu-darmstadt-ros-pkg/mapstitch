@@ -106,6 +106,7 @@ int main(int argc, char** argv)
     }
 
     namedWindow("debug"); imshow("debug", map.get_debug()); //imwrite("debug.pgm", map.get_debug());
+    imwrite("stitched.png", map.get_debug());
     cv::waitKey(0);
   }
 
